@@ -1,0 +1,30 @@
+# Generated MATLAB artifacts — rebuild with the provided scripts
+
+# System Composer
+*.slx
+*.sldd
+*.slxc
+
+# Requirements Toolbox
+*.slreqx
+*.slmx
+
+# Simulink Test
+*.mldatx
+
+# Profile files
+*.xml
+
+# Analysis instance
+*.mat
+
+# MATLAB cache and autosave
+slprj/
+*.autosave
+*.asv
+
+# Code generation
+codegen/
+
+# MATLAB preferences and session state
+*.mcos
