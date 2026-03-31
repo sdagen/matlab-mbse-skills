@@ -19,8 +19,10 @@ function buildFCSModel()
 %     ControlSurfaceFbk  — same elements as Cmd; actual measured positions (deg)
 %     DataBusMsg         — Data (double); simplified ARINC 429 message
 
+    scriptDir = fileparts(mfilename('fullpath'));
+    archDir   = fullfile(scriptDir, '..', 'architecture');
     modelName = "FCSSystem";
-    dictFile  = fullfile(fileparts(mfilename('fullpath')), "FCSInterfaces.sldd");
+    dictFile  = fullfile(archDir, "FCSInterfaces.sldd");
 
     %% Interface Dictionary
 
@@ -149,7 +151,7 @@ function buildFCSModel()
     %% Layout and Save
 
     Simulink.BlockDiagram.arrangeSystem(modelName);
-    slxPath = fullfile(fileparts(mfilename('fullpath')), modelName);
+    slxPath = fullfile(archDir, modelName);
     save_system(char(modelName), char(slxPath));
     fprintf("FCS architecture model created: %s\n", modelName);
 end

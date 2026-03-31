@@ -9,9 +9,10 @@ function buildFCSRequirements()
 %   Derivation links (type "Derive") trace each SR back to its parent SN.
 %   Link direction: SR (child/source) -> SN (parent/destination).
 
-    reqDir = fileparts(mfilename('fullpath'));
-    snFile = fullfile(reqDir, 'StakeholderNeeds.slreqx');
-    srFile = fullfile(reqDir, 'SystemRequirements.slreqx');
+    scriptDir = fileparts(mfilename('fullpath'));
+    reqDir    = fullfile(scriptDir, '..', 'requirements');
+    snFile    = fullfile(reqDir, 'StakeholderNeeds.slreqx');
+    srFile    = fullfile(reqDir, 'SystemRequirements.slreqx');
 
     %% Clean slate
     slreq.clear();

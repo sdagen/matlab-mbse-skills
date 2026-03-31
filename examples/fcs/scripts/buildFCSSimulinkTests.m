@@ -14,8 +14,9 @@ function buildFCSSimulinkTests()
 %
 %   Prerequisite: run buildFCSTestCases() before this script.
 
-    reqDir  = fullfile(fileparts(mfilename('fullpath')), '..', 'requirements');
-    verDir  = fileparts(mfilename('fullpath'));
+    scriptDir = fileparts(mfilename('fullpath'));
+    reqDir    = fullfile(scriptDir, '..', 'requirements');
+    verDir    = fullfile(scriptDir, '..', 'verification');
     tcFile  = fullfile(reqDir, 'TestCases.slreqx');
     mldatx  = fullfile(verDir, 'FCSTests.mldatx');
 
