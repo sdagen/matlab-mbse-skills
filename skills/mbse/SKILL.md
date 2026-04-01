@@ -45,10 +45,18 @@ requirements `Refine` links in Phase 5.
 
 ---
 
+## Starting a new project
+
+Use the `mbse-new-project` skill. It conducts an interview, then walks through
+each phase with a propose → approve → generate → validate loop. You end up with
+a complete, runnable set of build scripts and a MATLAB Project (`.prj`) that
+manages the path automatically.
+
 ## Phase Skills
 
 | Phase | Skill | What it covers |
 |---|---|---|
+| — | `mbse-new-project` | Guided end-to-end setup for a new project |
 | 1–2 | `mbse-requirements` | `slreq` API, ID scheme, shall-grammar, derivation links |
 | 3a–3b | `mbse-architecture` | Physical + functional SC models, profile/stereotype, allocation set |
 | 4–5 | `mbse-allocation` | SC allocation set (functional→physical) + `Refine` links (SR→component) |
@@ -64,11 +72,12 @@ be used alongside `mbse-architecture` for detailed port/connection patterns.
 
 ```
 my-system/
+├── my-system.prj     MATLAB Project file (manages path automatically)
+├── startup.m         Runs on project open — clears MATLAB state
 ├── requirements/     .slreqx files (StakeholderNeeds, SystemRequirements, TestCases)
-├── architecture/     .slx, .sldd, .xml (model, dictionary, profile)
-├── allocation/       buildAllocation.m
-├── analyses/         rollupAnalysis.m
-└── verification/     buildTestCases.m
+├── architecture/     .slx, .sldd, .xml, .mldatx (model, dictionary, profile, allocation)
+├── verification/     .mldatx (Simulink Test file)
+└── scripts/          buildAll.m and all phase build scripts
 ```
 
 ---

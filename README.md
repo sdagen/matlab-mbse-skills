@@ -27,6 +27,7 @@ MATLAB R2023a or later recommended. The FCS example was developed and tested on 
 matlab-mbse-skills/
 ├── skills/                        Claude skills — one folder per phase
 │   ├── mbse/                      Orchestrator: workflow overview and phase map
+│   ├── mbse-new-project/          Guided end-to-end setup for a new project
 │   ├── mbse-requirements/         Requirements Toolbox API and two-level hierarchy
 │   ├── mbse-architecture/         Physical + functional SC models, profile/stereotype
 │   ├── mbse-allocation/           SC allocation set (functional→physical) + Refine links
