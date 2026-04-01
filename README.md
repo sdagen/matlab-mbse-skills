@@ -25,14 +25,10 @@ MATLAB R2023a or later recommended. The FCS example was developed and tested on 
 
 ```
 matlab-mbse-skills/
-├── skills/                        Claude skills — one folder per phase
-│   ├── mbse/                      Orchestrator: workflow overview and phase map
+├── skills/                        Claude skills (4 files)
+│   ├── mbse/                      Workflow overview + requirements API + verification API
 │   ├── mbse-new-project/          Guided end-to-end setup for a new project
-│   ├── mbse-requirements/         Requirements Toolbox API and two-level hierarchy
-│   ├── mbse-architecture/         Physical + functional SC models, profile/stereotype
-│   ├── mbse-allocation/           SC allocation set (functional→physical) + Refine links
-│   ├── mbse-analysis/             Budget roll-up, trade studies, systemcomposer.analysis API
-│   ├── mbse-verification/         Test case requirements and Verify links
+│   ├── mbse-architecture/         Architecture + allocation + analysis (ref in references/)
 │   └── system-composer/           Deep System Composer API reference
 └── examples/
     └── fcs/                       Flight Control System — full end-to-end example
