@@ -291,6 +291,9 @@ function buildMySimulinkTests()
     mldatx  = fullfile(verDir,  'MyTests.mldatx');
     mldatxLinks = fullfile(verDir, 'MyTests~mldatx.slmx');
 
+    addpath(reqDir);   % ← required: without this, slreq.createLink warns that the .slreqx
+                       %   is not on the path and stores an absolute path in the .slmx link
+                       %   file instead of a relative one, breaking portability
     slreq.clear();
     tcSet = slreq.open(tcFile);
     sltest.testmanager.clear();

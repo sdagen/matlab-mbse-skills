@@ -47,36 +47,40 @@ Ask the following questions (can be in one message):
 6. **Analysis needs** — is any quantitative roll-up or trade study analysis needed? If so, what kind?
 7. **Test framework** — will Simulink Test be used for verification? (determines whether Phase 9 runs)
 
-After gathering answers, create the MATLAB Project:
+After gathering answers, create the MATLAB Project inline (not as a saved script,
+since the scripts/ folder doesn't exist yet):
 
 ```matlab
-function setupMBSEProject(projectName, projectFolder)
-% setupMBSEProject  Create MATLAB Project structure for an MBSE workflow.
+proj = matlab.project.createProject(Name=projectName, Folder=projectFolder);
 
-    rootDir = fullfile(projectFolder, projectName);
-    proj = matlab.project.createProject(Name=projectName, Folder=rootDir);
+% Standard MBSE folder structure
+for sub = {'requirements', 'architecture', 'verification', 'scripts'}
+    mkdir(fullfile(proj.RootFolder, sub{1}));
+end
 
-    % Standard MBSE folder structure
-    subfolders = {'requirements', 'architecture', 'verification', 'scripts'};
-    for i = 1:numel(subfolders)
-        mkdir(fullfile(proj.RootFolder, subfolders{i}));
-    end
+% Track all folders and put scripts/ on the MATLAB path
+% Path management is handled entirely by the project — no startup.m needed.
+% Each build script handles its own state cleanup (slreq.clear, closeAll, etc.)
+% at the top, so there is nothing project-startup-specific to do.
+for sub = {'requirements', 'architecture', 'verification', 'scripts'}
+    addFolderIncludingChildFiles(proj, fullfile(proj.RootFolder, sub{1}));
+end
+addPath(proj, fullfile(proj.RootFolder, 'scripts'));
 
-    % Register scripts folder on the MATLAB path
-    scriptsDir = fullfile(proj.RootFolder, 'scripts');
-    addFolderIncludingChildFiles(proj, scriptsDir);
-    addPath(proj, scriptsDir);
+% Shortcuts point to specific tracked files — add them as files are created.
+% E.g. after Phase 9: addShortcut(proj, fullfile(proj.RootFolder, 'scripts', 'buildAll.m'))
 
-    % Startup file — clean MATLAB state when project opens
-    startupFile = fullfile(proj.RootFolder, 'startup.m');
-    fid = fopen(startupFile, 'w');
-    fprintf(fid, 'fprintf(''Project %s loaded.\\n'');\n', projectName);
-    fprintf(fid, 'slreq.clear();\n');
-    fprintf(fid, 'systemcomposer.profile.Profile.closeAll();\n');
-    fprintf(fid, 'systemcomposer.allocation.AllocationSet.closeAll();\n');
-    fclose(fid);
-    addFile(proj, startupFile);
-    addStartupFile(proj, startupFile);
+close(proj);
+```
+
+**Do not create a startup.m.** Build scripts are idempotent and self-cleaning —
+each one calls `slreq.clear()`, `Profile.closeAll()`, etc. at the top. There is
+no shared state that needs clearing on project open.
+
+**Shortcuts** (`addShortcut`) point to individual tracked files and appear in the
+MATLAB Project Shortcuts panel. Add them progressively as key files are created:
+`buildAll.m`, the main `.slx` model, `SystemRequirements.slreqx`. Shortcuts take
+only the file path — no label argument: `addShortcut(proj, filePath)`.
 
     close(proj);
     fprintf('Project created: %s\n', rootDir);

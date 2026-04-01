@@ -78,9 +78,10 @@ function buildMySystemModel()
     %% Connections — CRITICAL: use connect(srcPort, dstPort), NO architecture argument
     connect(compA.getPort("OutPort1"), compB.getPort("InPort1"));
 
-    %% Layout and Save
+    %% Layout, Save, and Open
     Simulink.BlockDiagram.arrangeSystem(modelName);
-    save(model);
+    save_system(char(modelName), char(fullfile(archDir, modelName)));
+    open_system(char(modelName));   % ← required: createModel alone does not show the SC editor
     fprintf("Model created: %s\n", modelName);
 end
 
