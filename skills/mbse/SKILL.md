@@ -282,11 +282,30 @@ end
 
 ## Simulink Test Traceability
 
+### Two tiers — know which one you need
+
+**Tier 1 — TC requirements** (`TestCases.slreqx`, built in Phase 8): testable
+shall-statements with Verify links to SRs. Valid on their own; provide full
+traceability with no simulation model required.
+
+**Tier 2 — Simulink Test file** (`.mldatx`, built here): links test cases to a
+Simulink model under test with inputs and pass/fail assessments. **Only generate
+this when a Simulink simulation model actually exists.** Without a model under
+test, `createTestCase` produces empty stubs that cannot run — they add no value
+over the TC requirements already in Tier 1.
+
+For each test case to be runnable it needs:
+- `SystemUnderTest` set to the `.slx` model path
+- Inputs defined (test sequence, signal editor, or external data)
+- Pass/fail assessments (verify statements or baseline comparison)
+
+### Script skeleton
+
 ```matlab
 function buildMySimulinkTests()
-    rootDir = fileparts(mfilename('fullpath'));
-    reqDir  = fullfile(rootDir, '..', 'requirements');
-    verDir  = fullfile(rootDir, '..', 'verification');
+    rootDir = fileparts(fileparts(mfilename('fullpath')));
+    reqDir  = fullfile(rootDir, 'requirements');
+    verDir  = fullfile(rootDir, 'verification');
     tcFile  = fullfile(reqDir,  'TestCases.slreqx');
     mldatx  = fullfile(verDir,  'MyTests.mldatx');
     mldatxLinks = fullfile(verDir, 'MyTests~mldatx.slmx');
@@ -318,11 +337,12 @@ function buildMySimulinkTests()
             tcId  = suites{s, 3}{t};
             tcReq = tcSet.find('Id', tcId);
             if isempty(tcReq), warning('TC %s not found — skipped.', tcId); continue; end
-            stc             = createTestCase(suite, 'simulation', tcId);
-            stc.Description = tcReq.Description;
-            stc.Tags        = suites{s, 2};
-            lnk             = slreq.createLink(stc, tcReq);
-            lnk.Type        = 'Verify';
+            stc                  = createTestCase(suite, 'simulation', tcId);
+            stc.Description      = tcReq.Description;
+            stc.Tags             = suites{s, 2};
+            stc.SystemUnderTest  = 'MySimulinkModel';   % ← must be set; no-op without this
+            lnk      = slreq.createLink(stc, tcReq);
+            lnk.Type = 'Verify';
         end
     end
 

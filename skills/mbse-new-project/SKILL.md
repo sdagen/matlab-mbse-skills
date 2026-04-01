@@ -296,14 +296,37 @@ Show: TC count, verification coverage report (SR IDs vs TC IDs). Flag any SRs wi
 
 ## Phase 9: Simulink Tests and Final Summary
 
-### Generate
+### Two tiers of verification — be explicit about the distinction
 
-Generate `scripts/buildSimulinkTests.m` using patterns from the `mbse-verification` skill:
-- Delete the `.mldatx` and its `.slmx` link file before recreating
-- Remove the default auto-created test suite before adding named suites
-- Group TCs into suites by functional area
+**Tier 1 — TC requirements (Phase 8, always done):** `TestCases.slreqx` contains
+testable shall-statements with Verify links to SRs. These are valid artifacts on
+their own and provide full requirements traceability regardless of whether a
+simulation model exists.
 
-Then generate `scripts/buildAll.m` that calls all phase scripts in order with timing output. This is the single entry point for a clean rebuild from scratch.
+**Tier 2 — Simulink Test file (Phase 9, only if a simulation model exists):**
+`buildSimulinkTests.m` creates an `.mldatx` file that links test cases to a
+Simulink model under test. **This only makes sense when the user has an actual
+Simulink model to simulate.** Without a model, the test cases are empty stubs —
+they have names and descriptions but cannot run and provide no additional value
+over the TC requirements already in Phase 8.
+
+Before generating `buildSimulinkTests.m`, confirm with the user:
+> "Do you have a Simulink simulation model to test against, or is this project
+> architecture/MBSE only at this stage?"
+
+- **If no simulation model:** skip `buildSimulinkTests.m`, do not include it in
+  `buildAll.m`, and note in the final summary that Simulink Test is deferred
+  until a simulation model exists.
+- **If a simulation model exists:** ask for the model name, then generate
+  `buildSimulinkTests.m` using patterns from the `mbse` skill. Each test case
+  must have `SystemUnderTest` set and meaningful pass/fail assessments — a test
+  case that only copies a description is not useful.
+
+### Generate buildAll.m
+
+Generate `scripts/buildAll.m` that calls all phase scripts in order with timing
+output. Omit `buildSimulinkTests` if Phase 9 was skipped. This is the single
+entry point for a clean rebuild from scratch.
 
 ### Final summary
 
@@ -319,11 +342,11 @@ Project: <Name>  (<root folder>)
 │   ├── <Name>System.slx           (physical model)
 │   ├── <Name>Functional.slx       (functional model)
 │   ├── <Name>Interfaces.sldd      (interface dictionary)
-│   ├── <Name>Budget.xml           (stereotype profile)
+│   ├── <Name>Profile.xml          (stereotype profile)
 │   ├── <Name>Allocation.mldatx    (functional→physical allocation)
 │   └── <analysis>.mat             (analysis instance, if Phase 7 ran)
 ├── verification/
-│   └── <Name>Tests.mldatx         (Simulink Test file)
+│   └── <Name>Tests.mldatx         (if Phase 9 ran — requires simulation model)
 └── scripts/
     ├── buildAll.m                  (run this to rebuild everything)
     ├── buildRequirements.m
@@ -333,7 +356,7 @@ Project: <Name>  (<root folder>)
     ├── buildAllocation.m
     ├── runAnalysis.m               (if Phase 7 ran)
     ├── buildTestCases.m
-    └── buildSimulinkTests.m
+    └── buildSimulinkTests.m        (if Phase 9 ran)
 
 Traceability:
   SN ─[Derive]─▶ SR ─[Refine]─▶ Component
@@ -341,7 +364,8 @@ Traceability:
                           [Allocate]
                               │
                          LogicalFunction
-  SR ─[Verify]─▶ TC ─[Verify]─▶ Simulink Test Case
+  SR ─[Verify]─▶ TC requirement
+                     └─[Verify]─▶ Simulink Test Case  (Phase 9 only)
 ```
 
 Remind the user they can rebuild everything cleanly at any time with `buildAll()`.
