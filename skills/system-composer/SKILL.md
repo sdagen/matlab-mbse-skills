@@ -116,9 +116,10 @@ function buildMySystemProfile()
     %                                                                        ^^^^^^^^^^^
     %   String DefaultValue must be a quoted MATLAB expression — wrap in extra quotes
 
-    profile.save();          % ← no-arg form saves to <profileName>.xml in current folder
-    % profile.save([profileName, '.xml'])  ← char path OK if you need a specific location
-    % profile.save(profileName + ".xml")   ← FAILS: string type causes "must be scalar" error
+    % profile.save(folder) saves <profileName>.xml into that folder — ALWAYS pass a folder
+    % profile.save()        saves to current working directory (only if that's where you want it)
+    % NEVER pass a file path ending in .xml — it creates a DIRECTORY with that name instead of a file
+    profile.save(archDir);   % ← correct: folder path, no filename
 
     %% Apply to Model
     model = systemcomposer.openModel(modelName);

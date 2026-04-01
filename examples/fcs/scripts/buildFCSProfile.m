@@ -21,8 +21,9 @@ function buildFCSProfile()
 
     %% Create profile
     systemcomposer.profile.Profile.closeAll();
-    profileXml = fullfile(archDir, [profileName, '.xml']);
-    if isfile(profileXml), delete(profileXml); end
+    profileFile = fullfile(archDir, [profileName, '.xml']);
+    if isfile(profileFile), delete(profileFile); end
+    if isfolder(profileFile), rmdir(profileFile, 's'); end
 
     profile = systemcomposer.profile.Profile.createProfile(profileName);
     st = addStereotype(profile, 'BudgetProperties', AppliesTo="Component");
@@ -30,7 +31,7 @@ function buildFCSProfile()
     addProperty(st, 'PowerEstimate_W', Type="double", Units="W",  DefaultValue="0");
     addProperty(st, 'PowerMargin_W',   Type="double", Units="W",  DefaultValue="0");
     addProperty(st, 'Mass_kg',         Type="double", Units="kg", DefaultValue="0");
-    profile.save(profileXml);
+    profile.save(archDir);   % pass FOLDER — save(file.xml) creates a directory, not a file
 
     %% Apply profile to model and set per-component values
     addpath(archDir);

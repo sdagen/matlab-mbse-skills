@@ -117,7 +117,9 @@ profileName = 'MySystemProfile';
 profileXml  = fullfile(archDir, [profileName, '.xml']);
 
 systemcomposer.profile.Profile.closeAll();
-if isfile(profileXml), delete(profileXml); end
+profileFile = fullfile(archDir, [profileName, '.xml']);
+if isfile(profileFile), delete(profileFile); end
+if isfolder(profileFile), rmdir(profileFile, 's'); end   % clean up old bad saves
 
 profile = systemcomposer.profile.Profile.createProfile(profileName);
 st = addStereotype(profile, 'ComponentProperties', AppliesTo="Component");
@@ -125,7 +127,11 @@ addProperty(st, 'Mass_kg',         Type="double", Units="kg", DefaultValue="0");
 addProperty(st, 'PowerEstimate_W', Type="double", Units="W",  DefaultValue="0");
 addProperty(st, 'PowerBudget_W',   Type="double", Units="W",  DefaultValue="0");
 addProperty(st, 'PowerMargin_W',   Type="double", Units="W",  DefaultValue="0");  % computed
-profile.save(profileXml);   % ← must be char array — string type causes "scalar" error
+
+% CRITICAL: pass the FOLDER, not the file path.
+% profile.save(folder)      → saves <profileName>.xml into that folder  ✓
+% profile.save(folder/a.xml) → creates a DIRECTORY named a.xml          ✗
+profile.save(archDir);
 
 applyProfile(model, profileName);
 prefix = [profileName, '.ComponentProperties.'];   % ← char concat, not string +
