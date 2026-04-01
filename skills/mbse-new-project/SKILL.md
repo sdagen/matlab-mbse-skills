@@ -69,15 +69,22 @@ mkdir(fullfile(rootDir, 'derived', 'codegen'));
 proj.SimulinkCacheFolder   = fullfile(rootDir, 'derived', 'cache');
 proj.SimulinkCodeGenFolder = fullfile(rootDir, 'derived', 'codegen');
 
-% Track MBSE folders and put scripts/ on the MATLAB path.
-% Do NOT track derived/ — it contains generated build outputs.
+% Track MBSE folders and put scripts/, architecture/, and requirements/ on
+% the MATLAB path. Do NOT track derived/ — it contains generated build outputs.
 % Path management is handled entirely by the project — no startup.m needed.
 % Each build script handles its own state cleanup (slreq.clear, closeAll, etc.)
 % at the top, so there is nothing project-startup-specific to do.
+%
+% IMPORTANT: architecture/ and requirements/ must also be on the project path
+% so that System Composer can resolve models by name and slreq can store
+% relative paths in .slmx link files. runChecks will fail with
+% Project:Checks:ProjectPath if folders are tracked but not on the path.
 for sub = {'requirements', 'architecture', 'verification', 'scripts'}
     addFolderIncludingChildFiles(proj, fullfile(rootDir, sub{1}));
 end
 addPath(proj, fullfile(rootDir, 'scripts'));
+addPath(proj, fullfile(rootDir, 'architecture'));
+addPath(proj, fullfile(rootDir, 'requirements'));
 
 % Shortcuts point to specific tracked files — add them as files are created.
 % E.g. after Phase 9: addShortcut(proj, fullfile(rootDir, 'scripts', 'buildAll.m'))
@@ -365,6 +372,52 @@ Before generating `buildSimulinkTests.m`, confirm with the user:
 Generate `scripts/buildAll.m` that calls all phase scripts in order with timing
 output. Omit `buildSimulinkTests` if Phase 9 was skipped. This is the single
 entry point for a clean rebuild from scratch.
+
+After all steps complete, `buildAll.m` must:
+1. Call `registerWithProject` for all script files (keeps the project in sync)
+2. Run `runChecks` to surface any project health problems immediately:
+
+```matlab
+%% Register all scripts with the project
+scriptsDir = fileparts(mfilename('fullpath'));
+scriptFiles = { ...
+    fullfile(scriptsDir, 'buildAll.m'), ...
+    fullfile(scriptsDir, 'buildRequirements.m'), ...
+    % ... all other scripts ...
+    fullfile(scriptsDir, 'registerWithProject.m'), ...
+};
+registerWithProject(scriptFiles);
+
+%% Project health check
+proj = matlab.project.currentProject();
+if ~isempty(proj.Name)
+    results = runChecks(proj);
+    nFail = 0;
+    fprintf('\nProject checks:\n');
+    for i = 1:numel(results)
+        if results(i).Passed
+            fprintf('  [PASS] %s\n', results(i).Description);
+        else
+            fprintf('  [FAIL] %s\n', results(i).Description);
+            for j = 1:numel(results(i).ProblemFiles)
+                fprintf('           %s\n', results(i).ProblemFiles(j));
+            end
+            nFail = nFail + 1;
+        end
+    end
+    if nFail == 0
+        fprintf('All checks passed.\n');
+    else
+        fprintf('%d check(s) failed — review output above.\n', nFail);
+    end
+end
+```
+
+`runChecks` runs 8 built-in project checks including file existence, path
+consistency (`Project:Checks:ProjectPath`), unsaved files, and SLPRJ folder
+placement. A `Project:Checks:ProjectPath` failure means a folder is on the
+MATLAB path but not registered as a project path folder — fix it with
+`addPath(proj, folderPath)` in the project setup script.
 
 ### Final summary
 
