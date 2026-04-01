@@ -39,6 +39,9 @@ function setupFCSProject()
     addPath(proj, fullfile(rootDir, 'architecture'));
     addPath(proj, fullfile(rootDir, 'requirements'));
 
+    %% Track root-level files that aren't in a tracked subfolder
+    addFile(proj, fullfile(rootDir, 'README.md'));
+
     %% Shortcuts — added progressively as key files are created by build scripts
     % After running buildFCSAll, uncomment these:
     % addShortcut(proj, fullfile(rootDir, 'scripts', 'buildFCSAll.m'));

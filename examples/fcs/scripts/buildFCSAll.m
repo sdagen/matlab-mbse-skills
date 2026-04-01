@@ -60,6 +60,9 @@ function buildFCSAll()
 
     %% Register all scripts with the project
     scriptsDir = fileparts(mfilename('fullpath'));
+    fcsDir = fileparts(scriptsDir);
+    registerWithProject({fullfile(fcsDir, 'README.md')});
+
     scriptFiles = { ...
         fullfile(scriptsDir, 'buildFCSAll.m'), ...
         fullfile(scriptsDir, 'buildFCSRequirements.m'), ...
