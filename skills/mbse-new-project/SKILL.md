@@ -51,24 +51,36 @@ After gathering answers, create the MATLAB Project inline (not as a saved script
 since the scripts/ folder doesn't exist yet):
 
 ```matlab
-proj = matlab.project.createProject(Name=projectName, Folder=projectFolder);
+proj    = matlab.project.createProject(Name=projectName, Folder=projectFolder);
+rootDir = proj.RootFolder;
 
 % Standard MBSE folder structure
 for sub = {'requirements', 'architecture', 'verification', 'scripts'}
-    mkdir(fullfile(proj.RootFolder, sub{1}));
+    mkdir(fullfile(rootDir, sub{1}));
 end
 
-% Track all folders and put scripts/ on the MATLAB path
+% Derived folders for Simulink cache and code generation — not tracked in the
+% project (they are build outputs), but must exist before setting the properties
+mkdir(fullfile(rootDir, 'derived', 'cache'));
+mkdir(fullfile(rootDir, 'derived', 'codegen'));
+
+% CRITICAL: use absolute paths — these properties resolve relative to the
+% current working directory, not the project root, so relative paths will be wrong
+proj.SimulinkCacheFolder   = fullfile(rootDir, 'derived', 'cache');
+proj.SimulinkCodeGenFolder = fullfile(rootDir, 'derived', 'codegen');
+
+% Track MBSE folders and put scripts/ on the MATLAB path.
+% Do NOT track derived/ — it contains generated build outputs.
 % Path management is handled entirely by the project — no startup.m needed.
 % Each build script handles its own state cleanup (slreq.clear, closeAll, etc.)
 % at the top, so there is nothing project-startup-specific to do.
 for sub = {'requirements', 'architecture', 'verification', 'scripts'}
-    addFolderIncludingChildFiles(proj, fullfile(proj.RootFolder, sub{1}));
+    addFolderIncludingChildFiles(proj, fullfile(rootDir, sub{1}));
 end
-addPath(proj, fullfile(proj.RootFolder, 'scripts'));
+addPath(proj, fullfile(rootDir, 'scripts'));
 
 % Shortcuts point to specific tracked files — add them as files are created.
-% E.g. after Phase 9: addShortcut(proj, fullfile(proj.RootFolder, 'scripts', 'buildAll.m'))
+% E.g. after Phase 9: addShortcut(proj, fullfile(rootDir, 'scripts', 'buildAll.m'))
 
 close(proj);
 ```
