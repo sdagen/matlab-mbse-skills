@@ -12,11 +12,13 @@ function rollupAnalysis()
 %
 %   Prerequisite: run buildFCSProfile() before this script.
 
-    reqDir      = fullfile(fileparts(mfilename('fullpath')), '..', 'requirements');
-    archDir     = fullfile(fileparts(mfilename('fullpath')), '..', 'architecture');
+    fcsDir  = fileparts(fileparts(mfilename('fullpath')));
+    reqDir  = fullfile(fcsDir, 'requirements');
+    archDir = fullfile(fcsDir, 'architecture');
     profileName = 'FCSBudget';
     modelName   = 'FCSSystem';
 
+    
     %% Read system-level budget limits from requirements
     slreq.clear();
     srSet = slreq.open(fullfile(reqDir, 'SystemRequirements.slreqx'));
@@ -27,7 +29,7 @@ function rollupAnalysis()
 
     %% Create analysis instance
     addpath(archDir);
-    model    = systemcomposer.openModel(fullfile(archDir, modelName));
+    model    = systemcomposer.openModel(modelName);
     arch     = model.Architecture;
     instance = instantiate(arch, profileName, 'PowerMassRollup');
 
@@ -104,7 +106,7 @@ function rollupAnalysis()
     instanceFile = fullfile(archDir, 'PowerMassRollup.mat');
     save(instance, instanceFile);
     fprintf('Analysis instance saved: %s\n', instanceFile);
-    fprintf('Open viewer: systemcomposer.analysis.openViewer(''%s'')\n', instanceFile);
+    fprintf('Open viewer: systemcomposer.analysis.openViewer(''%s'')\n', 'PowerMassRollup');
 end
 
 % ── Helpers ──────────────────────────────────────────────────────────────────

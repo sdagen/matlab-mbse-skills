@@ -21,19 +21,27 @@ right phase skill for each step.
 ## Workflow Overview
 
 ```
-Phase 1  Stakeholder Needs        SN-SYS-xxx   informal, operational perspective
+Phase 1  Stakeholder Needs           SN-SYS-xxx   informal, operational perspective
            |  (derives)
-Phase 2  System Requirements      SR-SYS-xxx   formal shall-statements, testable
+Phase 2  System Requirements         SR-SYS-xxx   formal shall-statements, testable
            |  (informs)
-Phase 3  Architecture Model       System Composer components + interfaces
-           |  (with profile)       budget stereotype properties set here
+Phase 3a Physical Architecture       MySystem.slx  components + interfaces + budget profile
+Phase 3b Functional Architecture     MyFunctional.slx  logical functions, same interface dict
+           |  (allocated via)
+Phase 4  Functional→Physical         MyAllocation.mldatx  allocation set, one scenario
+           Allocation Set
            |  (refines)
-Phase 4  Requirements Allocation  SR --> Component links, bidirectional
+Phase 5  Requirements Allocation     SR --> Component Refine links, bidirectional
            |  (quantifies)
-Phase 5  Trade Studies            roll-up budgets from stereotype properties
+Phase 6  Trade Studies               roll-up budgets from stereotype properties
            |  (verifies)
-Phase 6  Verification             test cases TC-SYS-xxx linked to SRs
+Phase 7  Verification                test cases TC-SYS-xxx linked to SRs
 ```
+
+The functional architecture tier (3b + 4) implements the ARP4754A requirement
+for an explicit functional–physical traceability layer. It uses a separate System
+Composer model and a System Composer allocation set — distinct from the
+requirements `Refine` links in Phase 5.
 
 ---
 
@@ -42,10 +50,10 @@ Phase 6  Verification             test cases TC-SYS-xxx linked to SRs
 | Phase | Skill | What it covers |
 |---|---|---|
 | 1–2 | `mbse-requirements` | `slreq` API, ID scheme, shall-grammar, derivation links |
-| 3 | `mbse-architecture` | Decomposition, System Composer model, profile/stereotype setup |
-| 4 | `mbse-allocation` | Bidirectional `Refine` links, allocation matrix, coverage |
-| 5 | `mbse-trade-studies` | Roll-up budgets, margin reports, `getPropertyValue` |
-| 6 | `mbse-verification` | Test cases, `Verify` links, coverage report |
+| 3a–3b | `mbse-architecture` | Physical + functional SC models, profile/stereotype, allocation set |
+| 4–5 | `mbse-allocation` | SC allocation set (functional→physical) + `Refine` links (SR→component) |
+| 6 | `mbse-analysis` | Roll-up budgets, trade studies, margin reports, sensitivity analysis |
+| 7 | `mbse-verification` | Test cases, `Verify` links, coverage report |
 
 The `system-composer` skill covers the core System Composer API and should
 be used alongside `mbse-architecture` for detailed port/connection patterns.

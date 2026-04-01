@@ -12,8 +12,9 @@ function buildFCSAllocation()
 %     Forward  (req -> components): slreq.outLinks(req)   filter Type=="Refine"
 %     Reverse  (comp -> reqs):      slreq.inLinks(comp)   all are Refine links
 
-    reqDir  = fullfile(fileparts(mfilename('fullpath')), '..', 'requirements');
-    archDir = fullfile(fileparts(mfilename('fullpath')), '..', 'architecture');
+    fcsDir  = fileparts(fileparts(mfilename('fullpath')));
+    reqDir  = fullfile(fcsDir, 'requirements');
+    archDir = fullfile(fcsDir, 'architecture');
     srFile  = fullfile(reqDir, 'SystemRequirements.slreqx');
 
     %% Open requirements and model

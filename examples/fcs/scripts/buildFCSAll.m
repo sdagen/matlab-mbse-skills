@@ -1,17 +1,19 @@
 function buildFCSAll()
 % buildFCSAll  Build the complete FCS MBSE artifact set in one command.
 %
-%   Calls all seven build scripts in the correct phase order:
+%   Calls all nine build scripts in the correct phase order:
 %
-%     1. buildFCSRequirements  — stakeholder needs + system requirements
-%     2. buildFCSModel         — System Composer architecture model
-%     3. buildFCSProfile       — budget profile + per-component estimates
-%                                (calls buildFCSModel internally — final stable model)
-%     4. buildFCSAllocation    — requirement-to-component Refine links
-%                                (must run after Profile so links target the final model)
-%     5. rollupAnalysis        — power + mass roll-up analysis
-%     6. buildFCSTestCases     — TC requirements + Verify links to SRs
-%     7. buildFCSSimulinkTests — Simulink Test file linked to TC requirements
+%     1. buildFCSRequirements   — stakeholder needs + system requirements
+%     2. buildFCSModel          — System Composer physical architecture model
+%     3. buildFCSProfile        — budget profile + per-component estimates
+%                                 (calls buildFCSModel internally — final stable model)
+%     4. buildFCSFunctional     — functional architecture model (logical functions)
+%     5. buildFCSAllocationSet  — function-to-component allocation (ARP4754A tier)
+%     6. buildFCSAllocation     — requirement-to-component Refine links
+%                                 (must run after Profile so links target the final model)
+%     7. rollupAnalysis         — power + mass roll-up analysis
+%     8. buildFCSTestCases      — TC requirements + Verify links to SRs
+%     9. buildFCSSimulinkTests  — Simulink Test file linked to TC requirements
 %
 %   All scripts are idempotent; re-running this rebuilds all artifacts cleanly.
 
@@ -38,8 +40,10 @@ function buildFCSAll()
 
     steps = {
         @buildFCSRequirements,  'Requirements (SN + SR sets, Derive links)';
-        @buildFCSModel,         'Architecture model + interface dictionary';
+        @buildFCSModel,         'Physical architecture model + interface dictionary';
         @buildFCSProfile,       'Budget profile + per-component estimates';
+        @buildFCSFunctional,    'Functional architecture model (logical functions)';
+        @buildFCSAllocationSet, 'Function-to-component allocation set';
         @buildFCSAllocation,    'Requirements allocation (Refine links)';
         @rollupAnalysis,        'Power + mass roll-up analysis';
         @buildFCSTestCases,     'Test case requirements (Verify links to SRs)';

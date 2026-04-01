@@ -12,12 +12,11 @@ function buildFCSProfile()
 %   Run buildFCSModel() first (or call this script which does so internally).
 %   Run rollupAnalysis() afterwards to see system-level budget summaries.
 
-    archDir     = fullfile(fileparts(mfilename('fullpath')), '..', 'architecture');
+    archDir     = fullfile(fileparts(fileparts(mfilename('fullpath'))), 'architecture');
     profileName = 'FCSBudget';
     modelName   = 'FCSSystem';
 
     %% Rebuild model from scratch (ensures clean profile application)
-    addpath(archDir);
     buildFCSModel();
 
     %% Create profile
@@ -34,6 +33,7 @@ function buildFCSProfile()
     profile.save(profileXml);
 
     %% Apply profile to model and set per-component values
+    addpath(archDir);
     model = systemcomposer.openModel(modelName);
     applyProfile(model, profileName);
     arch  = model.Architecture;
@@ -57,7 +57,8 @@ function buildFCSProfile()
         setProperty(comp, [prefix, 'Mass_kg'],         num2str(budgets{i, 4}));
     end
 
-    save(model);
+    slxPath = fullfile(archDir, modelName);
+    save_system(char(modelName), char(slxPath));
     fprintf('Profile "%s" applied to %s with budget estimates.\n', ...
         profileName, modelName);
 end

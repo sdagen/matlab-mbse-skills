@@ -19,17 +19,23 @@ function buildFCSModel()
 %     ControlSurfaceFbk  — same elements as Cmd; actual measured positions (deg)
 %     DataBusMsg         — Data (double); simplified ARINC 429 message
 
-    scriptDir = fileparts(mfilename('fullpath'));
-    archDir   = fullfile(scriptDir, '..', 'architecture');
+    fcsDir  = fileparts(fileparts(mfilename('fullpath')));
+    archDir = fullfile(fcsDir, 'architecture');
     modelName = "FCSSystem";
     dictFile  = fullfile(archDir, "FCSInterfaces.sldd");
 
     %% Interface Dictionary
 
-    if isfile(dictFile)
-        Simulink.data.dictionary.closeAll("-discard");
-        delete(dictFile);
-    end
+    % Always close all open dictionaries before creating a new one.
+    % A stale link file loaded in a prior step may have auto-opened a
+    % same-named dictionary from a different workspace, which would block
+    % systemcomposer.createDictionary even if dictFile itself is new.
+    if bdIsLoaded(modelName), close_system(modelName, 0); end
+    Simulink.data.dictionary.closeAll("-discard");
+    if isfile(dictFile), delete(dictFile); end
+    % Remove any existing .slx so createModel doesn't warn about shadowing
+    slxFile = fullfile(archDir, char(modelName) + ".slx");
+    if isfile(slxFile), delete(slxFile); end
     dict = systemcomposer.createDictionary(dictFile);
 
     % Interfaces — all elements typed as double; units documented in comments
@@ -77,10 +83,12 @@ function buildFCSModel()
 
     %% Architecture Model
 
-    if bdIsLoaded(modelName), close_system(modelName, 0); end
+    % Add architecture folder to path so linkDictionary can locate the dict
+    % by filename (in addition to the full path we provide).
+    addpath(archDir);
     model = systemcomposer.createModel(modelName);
     arch  = model.Architecture;
-    linkDictionary(model, dictFile);
+    linkDictionary(model, strrep(dictFile, '\', '/'));
 
     %% Components
 

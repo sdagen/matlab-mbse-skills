@@ -14,9 +14,9 @@ function buildFCSSimulinkTests()
 %
 %   Prerequisite: run buildFCSTestCases() before this script.
 
-    scriptDir = fileparts(mfilename('fullpath'));
-    reqDir    = fullfile(scriptDir, '..', 'requirements');
-    verDir    = fullfile(scriptDir, '..', 'verification');
+    fcsDir = fileparts(fileparts(mfilename('fullpath')));
+    reqDir = fullfile(fcsDir, 'requirements');
+    verDir = fullfile(fcsDir, 'verification');
     tcFile  = fullfile(reqDir, 'TestCases.slreqx');
     mldatx  = fullfile(verDir, 'FCSTests.mldatx');
 
@@ -26,8 +26,12 @@ function buildFCSSimulinkTests()
     tcSet = slreq.open(tcFile);
 
     %% Create test file (rebuild from scratch each run)
+    % Also delete the .slmx link file — stale links accumulate in it and
+    % produce "unresolved sources" warnings on every subsequent run.
+    mldatxLinks = fullfile(verDir, 'FCSTests~mldatx.slmx');
     sltest.testmanager.clear();
-    if isfile(mldatx), delete(mldatx); end
+    if isfile(mldatx),      delete(mldatx);      end
+    if isfile(mldatxLinks), delete(mldatxLinks); end
     tf = sltest.testmanager.TestFile(mldatx);
     tf.Description = 'FCS system-level verification tests. One test case per TC requirement.';
 

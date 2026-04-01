@@ -19,13 +19,66 @@ This skill covers the MBSE-specific decisions and patterns layered on top.
 
 ## Functional vs Physical Decomposition
 
-Before writing any code, map requirements to components:
+Before writing any code, decide whether you need one or two SC models:
 
-- **Logical functions** — what the system *does* (sense, compute, actuate, distribute)
-- **Physical components** — what *implements* each function (IMU, FlightComputer, Actuator)
+- **Single model (simple systems)** — physical components only; annotate functions
+  in comments or use Architecture Views as display filters
+- **Two models (recommended for ARP4754A compliance)** — separate functional and
+  physical models linked by a System Composer allocation set
 
-One component can implement multiple functions. Document the mapping as a
-comment block at the top of `buildMySystemModel.m` before the code starts.
+Two separate models is the standard MBSE approach and provides explicit,
+navigable functional→physical traceability. Architecture Views are display
+filters on a single model, not a separate tier.
+
+### Physical architecture model (`MySystem.slx`)
+
+What the system *implements* — hardware/software components, interfaces,
+and budget properties. Build this first; it owns the interface dictionary.
+
+### Functional architecture model (`MyFunctional.slx`)
+
+What the system *does* — logical functions that are independent of physical
+implementation. Shares the same interface dictionary as the physical model.
+
+```matlab
+function buildMyFunctional()
+    fcsDir    = fileparts(fileparts(mfilename('fullpath')));
+    archDir   = fullfile(fcsDir, 'architecture');
+    modelName = "MyFunctional";               % double-quoted string
+    dictFile  = fullfile(archDir, 'MyInterfaces.sldd');
+
+    % Get interfaces from physical model (already in memory)
+    addpath(archDir);
+    physModel = systemcomposer.openModel('MySystem');
+    dict      = physModel.InterfaceDictionary; % correct property — not loadDictionary
+    myIface   = dict.getInterface('MyInterface');
+
+    % Create functional model (clean slate)
+    if bdIsLoaded(modelName), close_system(modelName, 0); end
+    slxFile = fullfile(archDir, char(modelName) + ".slx");  % + with double-quoted string
+    if isfile(slxFile), delete(slxFile); end
+    model = systemcomposer.createModel(modelName);
+    arch  = model.Architecture;
+    linkDictionary(model, strrep(dictFile, '\', '/'));
+
+    funcA = addComponent(arch, 'FunctionA');
+    addTypedPort(funcA.Architecture, 'OutputA', 'out', myIface);
+    % ... more components, ports, connections ...
+
+    Simulink.BlockDiagram.arrangeSystem(modelName);
+    save_system(char(modelName), char(fullfile(archDir, modelName)));
+end
+
+function addTypedPort(compArch, name, direction, iface)
+    port = addPort(compArch, name, direction);
+    port.setInterface(iface);
+end
+```
+
+**Key gotchas:**
+- Use `physModel.InterfaceDictionary` to get the shared dict — `systemcomposer.loadDictionary` does not exist
+- `modelName` must be a MATLAB `string` (double-quoted) so that `char(modelName) + ".slx"` concatenates correctly; single-quoted char + single-quoted char does arithmetic
+- `addpath(archDir)` before `openModel` — SC resolves models via the MATLAB path even when given a full path
 
 ---
 

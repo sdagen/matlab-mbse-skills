@@ -28,18 +28,16 @@ matlab-mbse-skills/
 ├── skills/                        Claude skills — one folder per phase
 │   ├── mbse/                      Orchestrator: workflow overview and phase map
 │   ├── mbse-requirements/         Requirements Toolbox API and two-level hierarchy
-│   ├── mbse-architecture/         System Composer model authoring
-│   ├── mbse-allocation/           Refine links and bidirectional navigation
-│   ├── mbse-trade-studies/        Budget roll-up with systemcomposer.analysis API
+│   ├── mbse-architecture/         Physical + functional SC models, profile/stereotype
+│   ├── mbse-allocation/           SC allocation set (functional→physical) + Refine links
+│   ├── mbse-analysis/             Budget roll-up, trade studies, systemcomposer.analysis API
 │   ├── mbse-verification/         Test case requirements and Verify links
 │   └── system-composer/           Deep System Composer API reference
 └── examples/
     └── fcs/                       Flight Control System — full end-to-end example
-        ├── requirements/          Phase 1: SN + SR sets, TC requirements
-        ├── architecture/          Phase 2: SC model, interface dictionary
-        ├── allocation/            Phase 3: Refine links to components
-        ├── analyses/              Phase 4: profile, budget roll-up analysis
-        └── verification/          Phase 5+6: TC requirements, Simulink Test file
+        ├── requirements/          SN + SR sets, TC requirements
+        ├── architecture/          FCSSystem.slx, FCSFunctional.slx, FCSAllocation.mldatx
+        └── verification/          TC requirements, Simulink Test file
 ```
 
 ---
@@ -57,32 +55,39 @@ the right skill for each phase.
 
 ## Running the FCS Example
 
-The example scripts must be run in phase order. Each script is idempotent — safe
-to re-run at any time.
+Run `buildFCSAll()` to build everything in one command, or run steps individually
+in order. All scripts are idempotent — safe to re-run at any time.
 
 ```
+>> buildFCSAll()    % runs all 9 steps below in sequence
+
 Step 1 — Requirements
-  >> buildFCSRequirements()        % creates StakeholderNeeds.slreqx,
-                                   %         SystemRequirements.slreqx
+  >> buildFCSRequirements()        % StakeholderNeeds.slreqx, SystemRequirements.slreqx
 
-Step 2 — Architecture
-  >> buildFCSModel()               % creates FCSSystem.slx, FCSInterfaces.sldd
+Step 2 — Physical Architecture
+  >> buildFCSModel()               % FCSSystem.slx, FCSInterfaces.sldd
 
-Step 3 — Allocation
-  >> buildFCSAllocation()          % creates Refine links (25 total)
+Step 3 — Budget Profile
+  >> buildFCSProfile()             % FCSBudget profile applied to FCSSystem.slx
 
-Step 4 — Trade Studies
-  >> buildFCSProfile()             % applies FCSBudget profile to model
-  >> rollupAnalysis()              % runs power + mass roll-up, saves instance
+Step 4 — Functional Architecture
+  >> buildFCSFunctional()          % FCSFunctional.slx (6 logical functions)
 
-Step 5 — Test Case Requirements
-  >> buildFCSTestCases()           % creates TestCases.slreqx, Verify links to SRs
+Step 5 — Functional→Physical Allocation
+  >> buildFCSAllocationSet()       % FCSAllocation.mldatx (allocation set)
 
-Step 6 — Simulink Test
-  >> buildFCSSimulinkTests()       % creates FCSTests.mldatx, links to TC requirements
+Step 6 — Requirements Allocation
+  >> buildFCSAllocation()          % Refine links: SR → component (25 total)
+
+Step 7 — Analysis
+  >> rollupAnalysis()              % power + mass roll-up, PowerMassRollup.mat
+
+Step 8 — Test Case Requirements
+  >> buildFCSTestCases()           % TestCases.slreqx, Verify links to SRs
+
+Step 9 — Simulink Test
+  >> buildFCSSimulinkTests()       % FCSTests.mldatx, linked to TC requirements
 ```
-
-Add `examples/fcs` and its subdirectories to the MATLAB path before running.
 
 ---
 
@@ -92,6 +97,10 @@ Add `examples/fcs` and its subdirectories to the MATLAB path before running.
 Stakeholder Need  (StakeholderNeeds.slreqx)
     └─[Derive]─▶  System Requirement  (SystemRequirements.slreqx)
                       ├─[Refine]─▶  Architecture Component  (FCSSystem.slx)
+                      │                 ▲
+                      │             [Allocate]  (FCSAllocation.mldatx)
+                      │                 │
+                      │             Logical Function  (FCSFunctional.slx)
                       └─[Verify]─▶  TC Requirement  (TestCases.slreqx)
                                         └─[Verify]─▶  Simulink Test Case  (FCSTests.mldatx)
 ```

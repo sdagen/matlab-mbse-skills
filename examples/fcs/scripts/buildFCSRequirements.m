@@ -9,15 +9,23 @@ function buildFCSRequirements()
 %   Derivation links (type "Derive") trace each SR back to its parent SN.
 %   Link direction: SR (child/source) -> SN (parent/destination).
 
-    scriptDir = fileparts(mfilename('fullpath'));
-    reqDir    = fullfile(scriptDir, '..', 'requirements');
-    snFile    = fullfile(reqDir, 'StakeholderNeeds.slreqx');
-    srFile    = fullfile(reqDir, 'SystemRequirements.slreqx');
+    fcsDir = fileparts(fileparts(mfilename('fullpath')));
+    reqDir = fullfile(fcsDir, 'requirements');
+    snFile = fullfile(reqDir, 'StakeholderNeeds.slreqx');
+    srFile = fullfile(reqDir, 'SystemRequirements.slreqx');
 
-    %% Clean slate
+    %% Clean slate — delete both .slreqx and their .slmx link files
+    % The .slmx files store cross-artifact links (e.g. Refine links to the
+    % architecture model).  Stale .slmx files from a previous run or a
+    % different workspace will cause MATLAB to auto-open the old model and
+    % its data dictionary when the requirement set is loaded.
     slreq.clear();
-    if isfile(snFile), delete(snFile); end
-    if isfile(srFile), delete(srFile); end
+    snLinkFile = fullfile(reqDir, 'StakeholderNeeds~slreqx.slmx');
+    srLinkFile = fullfile(reqDir, 'SystemRequirements~slreqx.slmx');
+    if isfile(snFile),     delete(snFile);     end
+    if isfile(srFile),     delete(srFile);     end
+    if isfile(snLinkFile), delete(snLinkFile); end
+    if isfile(srLinkFile), delete(srLinkFile); end
 
     %% Stakeholder Needs
 

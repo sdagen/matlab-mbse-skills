@@ -1,14 +1,14 @@
 ---
-name: mbse-trade-studies
+name: mbse-analysis
 description: >
-  Use this skill for MBSE trade studies and budget analyses in MATLAB System Composer —
-  reading stereotype property values from components, computing roll-up budgets (power,
-  mass, latency, etc.), and reporting margins against system-level caps. Trigger when the
-  user wants to analyse budgets across an architecture, compare estimates to allocations,
-  or produce a system-level roll-up from component-level property values.
+  Use this skill for MBSE analysis in MATLAB System Composer — roll-up budgets, trade
+  studies, sensitivity analyses, and any quantitative analysis that reads stereotype
+  property values from architecture components. Trigger when the user wants to aggregate
+  budgets across an architecture, compute margins against system-level caps, compare
+  design alternatives, or run any form of system-level analysis on a System Composer model.
 ---
 
-# MBSE Phase 5: Trade Studies & Roll-Up Analysis
+# MBSE Phase 6: Analysis
 
 Roll-up analyses aggregate stereotype property values across components and
 compare against system-level budgets. Use the `systemcomposer.analysis` API —
@@ -21,7 +21,8 @@ back to the instance, and produces a saveable artifact for the Analysis Viewer.
 
 ```matlab
 % 1. Create analysis instance from the profile
-model    = systemcomposer.openModel(fullfile(archDir, modelName));
+addpath(archDir);
+model    = systemcomposer.openModel(modelName);   % by name, not full path
 arch     = model.Architecture;
 instance = instantiate(arch, profileName, 'MyAnalysis');
 
@@ -70,8 +71,9 @@ Set it to 0 at design time; the analysis script fills it in at run time via `set
 
 ```matlab
 function rollupAnalysis()
-    reqDir  = fullfile(fileparts(mfilename('fullpath')), '..', 'requirements');
-    archDir = fullfile(fileparts(mfilename('fullpath')), '..', 'architecture');
+    rootDir = fileparts(fileparts(mfilename('fullpath')));
+    reqDir  = fullfile(rootDir, 'requirements');
+    archDir = fullfile(rootDir, 'architecture');
     profileName = 'MyBudget';
     modelName   = 'MySystem';
 
@@ -83,7 +85,7 @@ function rollupAnalysis()
 
     % Create analysis instance
     addpath(archDir);
-    model    = systemcomposer.openModel(fullfile(archDir, modelName));
+    model    = systemcomposer.openModel(modelName);   % by name, not full path
     arch     = model.Architecture;
     instance = instantiate(arch, profileName, 'PowerMassRollup');
 

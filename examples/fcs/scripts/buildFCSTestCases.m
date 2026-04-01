@@ -14,14 +14,18 @@ function buildFCSTestCases()
 %
 %   Run buildFCSRequirements() before this script.
 
-    reqDir = fullfile(fileparts(mfilename('fullpath')), '..', 'requirements');
+    reqDir = fullfile(fileparts(fileparts(mfilename('fullpath'))), 'requirements');
     srFile = fullfile(reqDir, 'SystemRequirements.slreqx');
     tcFile = fullfile(reqDir, 'TestCases.slreqx');
 
     %% Open SR set; rebuild TC set from scratch
+    % Also delete the TC link file — stale Verify links could trigger
+    % auto-loading of the architecture model and its data dictionary.
     slreq.clear();
+    tcLinkFile = fullfile(reqDir, 'TestCases~slreqx.slmx');
+    if isfile(tcFile),     delete(tcFile);     end
+    if isfile(tcLinkFile), delete(tcLinkFile); end
     srSet = slreq.open(srFile);
-    if isfile(tcFile), delete(tcFile); end
     tcSet = slreq.new(tcFile);
 
     %% Test cases
