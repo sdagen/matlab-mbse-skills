@@ -21,6 +21,8 @@ function buildFCSTestCases()
     %% Open SR set; rebuild TC set from scratch
     % Also delete the TC link file — stale Verify links could trigger
     % auto-loading of the architecture model and its data dictionary.
+    % addpath(reqDir) before slreq.clear() keeps .slmx paths relative.
+    addpath(reqDir);
     slreq.clear();
     tcLinkFile = fullfile(reqDir, 'TestCases~slreqx.slmx');
     if isfile(tcFile),     delete(tcFile);     end
@@ -173,4 +175,9 @@ function buildFCSTestCases()
     fprintf('%s\n', repmat('─', 1, 80));
     fprintf('Coverage: %d / %d requirements verified  (%.0f%%)\n', ...
         covered, numel(allSRs), 100 * covered / numel(allSRs));
+    fprintf('Note: SR-FCS-014 and SR-FCS-015 (budget caps) are verified by\n');
+    fprintf('      rollupAnalysis — expected NOT COVERED in this report.\n');
+
+    %% Register with project
+    registerWithProject({tcFile});
 end

@@ -19,6 +19,9 @@ function buildFCSRequirements()
     % architecture model).  Stale .slmx files from a previous run or a
     % different workspace will cause MATLAB to auto-open the old model and
     % its data dictionary when the requirement set is loaded.
+    % addpath(reqDir) before slreq.clear() ensures slreq stores relative
+    % (not absolute) paths in .slmx files, keeping the project portable.
+    addpath(reqDir);
     slreq.clear();
     snLinkFile = fullfile(reqDir, 'StakeholderNeeds~slreqx.slmx');
     srLinkFile = fullfile(reqDir, 'SystemRequirements~slreqx.slmx');
@@ -163,6 +166,9 @@ function buildFCSRequirements()
     slreq.saveAll();
     fprintf('Derivation links:     15 (SR -> SN)\n');
     fprintf('Done.\n');
+
+    %% Register with project
+    registerWithProject({snFile, srFile});
 end
 
 % ── Helpers ──────────────────────────────────────────────────────────────────

@@ -28,7 +28,6 @@ function buildFCSFunctional()
     dictFile  = fullfile(archDir, 'FCSInterfaces.sldd');
 
     %% Open the shared interface dictionary via the physical model
-    % (FCSSystem is already in memory from buildFCSProfile)
     addpath(archDir);
     physModel = systemcomposer.openModel('FCSSystem');
     dict = physModel.InterfaceDictionary;
@@ -109,13 +108,18 @@ function buildFCSFunctional()
     connect(computeCL.getPort('StatusMsgOut'),          monitorHealth.getPort('StatusMsgIn'));
     connect(monitorHealth.getPort('MaintenanceMsgOut'), computeCL.getPort('MaintenanceMsgIn'));
 
-    %% Save
+    %% Save and open
     Simulink.BlockDiagram.arrangeSystem(modelName);
     slxPath = fullfile(archDir, modelName);
     save_system(char(modelName), char(slxPath));
+    open_system(char(modelName));   % show the System Composer editor
+
     fprintf('FCS functional model created: %s\n', modelName);
     fprintf('Functions: SenseAircraftState, ComputeControlLaws, CommandControlSurfaces,\n');
     fprintf('           DistributePower, ProvideCrewInterface, MonitorSystemHealth\n');
+
+    %% Register with project
+    registerWithProject({slxFile});
 end
 
 % ── Helper ───────────────────────────────────────────────────────────────────

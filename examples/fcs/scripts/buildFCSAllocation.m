@@ -18,6 +18,8 @@ function buildFCSAllocation()
     srFile  = fullfile(reqDir, 'SystemRequirements.slreqx');
 
     %% Open requirements and model
+    % addpath(reqDir) before slreq.clear() keeps .slmx paths relative
+    addpath(reqDir);
     slreq.clear();
     srSet = slreq.open(srFile);
     addpath(archDir);

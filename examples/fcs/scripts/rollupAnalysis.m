@@ -10,7 +10,7 @@ function rollupAnalysis()
 %     SR-FCS-014  (total power budget, W)
 %     SR-FCS-015  (total mass budget, kg)
 %
-%   Prerequisite: run buildFCSProfile() before this script.
+%   Prerequisite: run buildFCSModel() before this script.
 
     fcsDir  = fileparts(fileparts(mfilename('fullpath')));
     reqDir  = fullfile(fcsDir, 'requirements');
@@ -18,8 +18,9 @@ function rollupAnalysis()
     profileName = 'FCSBudget';
     modelName   = 'FCSSystem';
 
-    
     %% Read system-level budget limits from requirements
+    % addpath(reqDir) before slreq.clear() keeps .slmx paths relative
+    addpath(reqDir);
     slreq.clear();
     srSet = slreq.open(fullfile(reqDir, 'SystemRequirements.slreqx'));
     sysPowerBudget_W = parseBudgetValue(srSet, 'SR-FCS-014', 'W');
@@ -107,6 +108,9 @@ function rollupAnalysis()
     save(instance, instanceFile);
     fprintf('Analysis instance saved: %s\n', instanceFile);
     fprintf('Open viewer: systemcomposer.analysis.openViewer(''%s'')\n', 'PowerMassRollup');
+
+    %% Register with project
+    registerWithProject({instanceFile});
 end
 
 % ── Helpers ──────────────────────────────────────────────────────────────────

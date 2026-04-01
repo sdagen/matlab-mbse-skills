@@ -1,6 +1,6 @@
 function buildFCSModel()
-% buildFCSModel  Build the top-level System Composer architecture model for
-%                the Flight Control System (FCS).
+% buildFCSModel  Build the FCS System Composer physical architecture model
+%                and apply the FCSBudget stereotype profile.
 %
 %   Components:
 %     FlightComputer  — primary control law computation (dual-redundant)
@@ -18,9 +18,14 @@ function buildFCSModel()
 %     ControlSurfaceCmd  — Elevator, LeftAileron, RightAileron, Rudder (deg)
 %     ControlSurfaceFbk  — same elements as Cmd; actual measured positions (deg)
 %     DataBusMsg         — Data (double); simplified ARINC 429 message
+%
+%   Profile (FCSBudget.xml):
+%     Stereotype: BudgetProperties
+%     Properties: PowerBudget_W, PowerEstimate_W, PowerMargin_W, Mass_kg
+%     Applied to all 6 components with initial per-component estimates.
 
-    fcsDir  = fileparts(fileparts(mfilename('fullpath')));
-    archDir = fullfile(fcsDir, 'architecture');
+    fcsDir    = fileparts(fileparts(mfilename('fullpath')));
+    archDir   = fullfile(fcsDir, 'architecture');
     modelName = "FCSSystem";
     dictFile  = fullfile(archDir, "FCSInterfaces.sldd");
 
@@ -33,7 +38,7 @@ function buildFCSModel()
     if bdIsLoaded(modelName), close_system(modelName, 0); end
     Simulink.data.dictionary.closeAll("-discard");
     if isfile(dictFile), delete(dictFile); end
-    % Remove any existing .slx so createModel doesn't warn about shadowing
+    % Remove any existing .slx so createModel does not warn about shadowing
     slxFile = fullfile(archDir, char(modelName) + ".slx");
     if isfile(slxFile), delete(slxFile); end
     dict = systemcomposer.createDictionary(dictFile);
@@ -50,12 +55,12 @@ function buildFCSModel()
     addElement(pilotCmdIface, "YawRateCmd",   Type="double");   % deg/s
 
     sensorDataIface = addInterface(dict, "SensorData");
-    addElement(sensorDataIface, "RollRate",       Type="double");   % deg/s
-    addElement(sensorDataIface, "PitchRate",      Type="double");   % deg/s
-    addElement(sensorDataIface, "YawRate",        Type="double");   % deg/s
-    addElement(sensorDataIface, "Airspeed",       Type="double");   % m/s
-    addElement(sensorDataIface, "AltitudeFt",     Type="double");   % ft
-    addElement(sensorDataIface, "AngleOfAttack",  Type="double");   % deg
+    addElement(sensorDataIface, "RollRate",      Type="double");   % deg/s
+    addElement(sensorDataIface, "PitchRate",     Type="double");   % deg/s
+    addElement(sensorDataIface, "YawRate",       Type="double");   % deg/s
+    addElement(sensorDataIface, "Airspeed",      Type="double");   % m/s
+    addElement(sensorDataIface, "AltitudeFt",    Type="double");   % ft
+    addElement(sensorDataIface, "AngleOfAttack", Type="double");   % deg
 
     ctrlSurfCmdIface = addInterface(dict, "ControlSurfaceCmd");
     addElement(ctrlSurfCmdIface, "Elevator",     Type="double");   % deg
@@ -112,17 +117,17 @@ function buildFCSModel()
     addTypedPort(flightComputer.Architecture, "StatusMsgOut",     "out", dataBusMsgIface);
 
     % PilotInterface: receives power; outputs pilot commands
-    addTypedPort(pilotInterface.Architecture, "ElecPowerIn",  "in",  elecPowerIface);
-    addTypedPort(pilotInterface.Architecture, "PilotCmdOut",  "out", pilotCmdIface);
+    addTypedPort(pilotInterface.Architecture, "ElecPowerIn", "in",  elecPowerIface);
+    addTypedPort(pilotInterface.Architecture, "PilotCmdOut", "out", pilotCmdIface);
 
     % SensorSuite: receives power; outputs sensor data
-    addTypedPort(sensorSuite.Architecture, "ElecPowerIn",    "in",  elecPowerIface);
-    addTypedPort(sensorSuite.Architecture, "SensorDataOut",  "out", sensorDataIface);
+    addTypedPort(sensorSuite.Architecture, "ElecPowerIn",   "in",  elecPowerIface);
+    addTypedPort(sensorSuite.Architecture, "SensorDataOut", "out", sensorDataIface);
 
     % ActuatorSystem: receives power and surface commands; outputs surface feedback
-    addTypedPort(actuatorSystem.Architecture, "ElecPowerIn",     "in",  elecPowerIface);
-    addTypedPort(actuatorSystem.Architecture, "CtrlSurfCmdIn",   "in",  ctrlSurfCmdIface);
-    addTypedPort(actuatorSystem.Architecture, "CtrlSurfFbkOut",  "out", ctrlSurfFbkIface);
+    addTypedPort(actuatorSystem.Architecture, "ElecPowerIn",    "in",  elecPowerIface);
+    addTypedPort(actuatorSystem.Architecture, "CtrlSurfCmdIn",  "in",  ctrlSurfCmdIface);
+    addTypedPort(actuatorSystem.Architecture, "CtrlSurfFbkOut", "out", ctrlSurfFbkIface);
 
     % PowerSystem: four independent outputs — one per powered subsystem
     addTypedPort(powerSystem.Architecture, "FlightComputerPwrOut", "out", elecPowerIface);
@@ -131,8 +136,8 @@ function buildFCSModel()
     addTypedPort(powerSystem.Architecture, "InterfacePwrOut",      "out", elecPowerIface);
 
     % DataBus: receives status from FlightComputer; outputs maintenance messages
-    addTypedPort(dataBus.Architecture, "StatusMsgIn",      "in",  dataBusMsgIface);
-    addTypedPort(dataBus.Architecture, "MaintenanceMsgOut","out", dataBusMsgIface);
+    addTypedPort(dataBus.Architecture, "StatusMsgIn",       "in",  dataBusMsgIface);
+    addTypedPort(dataBus.Architecture, "MaintenanceMsgOut", "out", dataBusMsgIface);
 
     %% Connections
 
@@ -143,25 +148,73 @@ function buildFCSModel()
     connect(powerSystem.getPort("InterfacePwrOut"),      pilotInterface.getPort("ElecPowerIn"));
 
     % Pilot commands
-    connect(pilotInterface.getPort("PilotCmdOut"),       flightComputer.getPort("PilotCmdIn"));
+    connect(pilotInterface.getPort("PilotCmdOut"),    flightComputer.getPort("PilotCmdIn"));
 
     % Sensor data
-    connect(sensorSuite.getPort("SensorDataOut"),        flightComputer.getPort("SensorDataIn"));
+    connect(sensorSuite.getPort("SensorDataOut"),     flightComputer.getPort("SensorDataIn"));
 
     % Control surface command and feedback loop
-    connect(flightComputer.getPort("CtrlSurfCmdOut"),    actuatorSystem.getPort("CtrlSurfCmdIn"));
-    connect(actuatorSystem.getPort("CtrlSurfFbkOut"),    flightComputer.getPort("CtrlSurfFbkIn"));
+    connect(flightComputer.getPort("CtrlSurfCmdOut"), actuatorSystem.getPort("CtrlSurfCmdIn"));
+    connect(actuatorSystem.getPort("CtrlSurfFbkOut"), flightComputer.getPort("CtrlSurfFbkIn"));
 
     % Data bus (status reporting and maintenance)
-    connect(flightComputer.getPort("StatusMsgOut"),      dataBus.getPort("StatusMsgIn"));
-    connect(dataBus.getPort("MaintenanceMsgOut"),        flightComputer.getPort("MaintenanceMsgIn"));
+    connect(flightComputer.getPort("StatusMsgOut"),    dataBus.getPort("StatusMsgIn"));
+    connect(dataBus.getPort("MaintenanceMsgOut"),      flightComputer.getPort("MaintenanceMsgIn"));
 
-    %% Layout and Save
-
+    %% Layout
     Simulink.BlockDiagram.arrangeSystem(modelName);
+
+    %% Budget Profile
+
+    profileName = 'FCSBudget';
+    profileFile = fullfile(archDir, [profileName, '.xml']);
+
+    systemcomposer.profile.Profile.closeAll();
+    if isfile(profileFile), delete(profileFile); end
+    if isfolder(profileFile), rmdir(profileFile, 's'); end   % clean up old bad saves
+
+    profile = systemcomposer.profile.Profile.createProfile(profileName);
+    st = addStereotype(profile, 'BudgetProperties', AppliesTo="Component");
+    addProperty(st, 'PowerBudget_W',   Type="double", Units="W",  DefaultValue="0");
+    addProperty(st, 'PowerEstimate_W', Type="double", Units="W",  DefaultValue="0");
+    addProperty(st, 'PowerMargin_W',   Type="double", Units="W",  DefaultValue="0");
+    addProperty(st, 'Mass_kg',         Type="double", Units="kg", DefaultValue="0");
+
+    % Pass FOLDER to profile.save — passing a .xml file path creates a directory
+    profile.save(archDir);
+
+    applyProfile(model, profileName);
+
+    %              Component            PowerBudget_W  PowerEstimate_W  Mass_kg
+    budgets = {
+        'FlightComputer',  150,  120,   3.5;
+        'PilotInterface',   20,   15,   2.0;
+        'SensorSuite',      50,   45,   4.0;
+        'ActuatorSystem',  200,  180,  15.0;
+        'PowerSystem',      50,   40,   8.0;
+        'DataBus',          10,    8,   0.5;
+    };
+
+    prefix = [profileName, '.BudgetProperties.'];
+    for i = 1:size(budgets, 1)
+        comp = arch.getComponent(budgets{i, 1});
+        applyStereotype(comp, [profileName, '.BudgetProperties']);
+        setProperty(comp, [prefix, 'PowerBudget_W'],   num2str(budgets{i, 2}));
+        setProperty(comp, [prefix, 'PowerEstimate_W'], num2str(budgets{i, 3}));
+        setProperty(comp, [prefix, 'Mass_kg'],         num2str(budgets{i, 4}));
+    end
+
+    %% Save and open
     slxPath = fullfile(archDir, modelName);
     save_system(char(modelName), char(slxPath));
-    fprintf("FCS architecture model created: %s\n", modelName);
+    open_system(char(modelName));   % show the System Composer editor
+
+    fprintf('FCS physical model:  %s  (%d components, %d interfaces)\n', ...
+        modelName, numel(arch.Components), numel(arch.Connectors));
+    fprintf('Budget profile:      %s  (%d components)\n', profileName, size(budgets, 1));
+
+    %% Register with project
+    registerWithProject({dictFile, slxFile, profileFile});
 end
 
 % ── Helpers ──────────────────────────────────────────────────────────────────
