@@ -19,15 +19,18 @@ correct API patterns, common gotchas, and a proven script structure for building
 
 ## Recommended Script Structure
 
-Split work across two scripts — keep them composable so the profile script always starts clean:
+Keep profile creation in the same script as the architecture — add it at the end,
+after the model and connections are built:
 
 ```
-buildMySystemModel.m    ← Phase 1+2: architecture + interface dictionary
-buildMySystemProfile.m  ← Phase 3: profile, stereotypes, property values
-                          (calls buildMySystemModel at the top)
+buildMySystemModel.m    ← architecture + interface dictionary + profile/stereotypes
 ```
 
-Each script is idempotent: it deletes and recreates its artifacts on every run.
+This keeps both artifacts in sync on every rebuild, and avoids the "profile already
+applied" uniqueness error that occurs when a separate profile script re-applies a
+profile to an already-profiled model.
+
+The script is idempotent: it deletes and recreates all artifacts on every run.
 
 ---
 
