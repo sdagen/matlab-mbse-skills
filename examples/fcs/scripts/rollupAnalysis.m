@@ -12,9 +12,10 @@ function rollupAnalysis()
 %
 %   Prerequisite: run buildFCSModel() before this script.
 
-    fcsDir  = fileparts(fileparts(mfilename('fullpath')));
-    reqDir  = fullfile(fcsDir, 'requirements');
-    archDir = fullfile(fcsDir, 'architecture');
+    fcsDir      = fileparts(fileparts(mfilename('fullpath')));
+    reqDir      = fullfile(fcsDir, 'requirements');
+    archDir     = fullfile(fcsDir, 'architecture');
+    analysisDir = fullfile(fcsDir, 'analysis');
     profileName = 'FCSBudget';
     modelName   = 'FCSSystem';
 
@@ -104,7 +105,7 @@ function rollupAnalysis()
         100 * totalMass / sysMassBudget_kg);
 
     %% Save instance for Analysis Viewer
-    instanceFile = fullfile(archDir, 'PowerMassRollup.mat');
+    instanceFile = fullfile(analysisDir, 'PowerMassRollup.mat');
     save(instance, instanceFile);
     fprintf('Analysis instance saved: %s\n', instanceFile);
     fprintf('Open viewer: systemcomposer.analysis.openViewer(''%s'')\n', 'PowerMassRollup');

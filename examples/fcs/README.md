@@ -93,6 +93,13 @@ Generated artifacts — do not edit by hand.
 | `FCSBudget.xml` | Profile: `BudgetProperties` stereotype with PowerBudget\_W, PowerEstimate\_W, PowerMargin\_W, Mass\_kg applied to all components |
 | `FCSFunctional.slx` | Functional System Composer model (6 logical functions) |
 | `FCSAllocation.mldatx` | Functional→physical allocation set (scenario: FunctionalToPhysical) |
+
+### `analysis/`
+
+Generated artifacts — do not edit by hand.
+
+| File | Description |
+|---|---|
 | `PowerMassRollup.mat` | Analysis instance — open with `systemcomposer.analysis.openViewer('PowerMassRollup')` |
 
 ### `verification/`

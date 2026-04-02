@@ -110,7 +110,7 @@ function buildFCSAll()
     fprintf('                 FCSInterfaces.sldd\n');
     fprintf('                 FCSBudget.xml\n');
     fprintf('                 FCSAllocation.mldatx\n');
-    fprintf('                 PowerMassRollup.mat\n');
+    fprintf('  analysis/      PowerMassRollup.mat\n');
     fprintf('  verification/  (Simulink Test deferred — no simulation model yet)\n');
     fprintf('\nRun buildFCSAll() at any time to rebuild everything cleanly.\n');
 end

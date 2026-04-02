@@ -27,8 +27,8 @@ end
 % 3. Write computed results back to instance (does not modify the design model)
 setValue(ci, [prefix, 'ComputedMargin'], budget - val1);
 
-% 4. Save for Analysis Viewer
-save(instance, fullfile(archDir, 'MyAnalysis.mat'));
+% 4. Save for Analysis Viewer — save to analysis/, not architecture/
+save(instance, fullfile(analysisDir, 'MyAnalysis.mat'));
 % Open: systemcomposer.analysis.openViewer('MyAnalysis')  ← instance NAME not file path
 ```
 
@@ -61,6 +61,7 @@ function runAnalysis()
     rootDir     = fileparts(fileparts(mfilename('fullpath')));
     reqDir      = fullfile(rootDir, 'requirements');
     archDir     = fullfile(rootDir, 'architecture');
+    analysisDir = fullfile(rootDir, 'analysis');
     profileName = 'MySystemProfile';
     modelName   = 'MySystem';
 
@@ -90,7 +91,7 @@ function runAnalysis()
     margin = cap - total;
     fprintf('Total: %.1f / %.1f  (margin %.1f)\n', total, cap, margin);
 
-    save(instance, fullfile(archDir, 'MyAnalysis.mat'));
+    save(instance, fullfile(analysisDir, 'MyAnalysis.mat'));
     fprintf('Open: systemcomposer.analysis.openViewer(''MyAnalysis'')\n');
 end
 

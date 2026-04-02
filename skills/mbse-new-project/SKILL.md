@@ -55,7 +55,7 @@ proj    = matlab.project.createProject(Name=projectName, Folder=projectFolder);
 rootDir = proj.RootFolder;
 
 % Standard MBSE folder structure
-for sub = {'requirements', 'architecture', 'verification', 'scripts'}
+for sub = {'requirements', 'architecture', 'analysis', 'verification', 'scripts'}
     mkdir(fullfile(rootDir, sub{1}));
 end
 
@@ -79,7 +79,9 @@ proj.SimulinkCodeGenFolder = fullfile(rootDir, 'derived', 'codegen');
 % so that System Composer can resolve models by name and slreq can store
 % relative paths in .slmx link files. runChecks will fail with
 % Project:Checks:ProjectPath if folders are tracked but not on the path.
-for sub = {'requirements', 'architecture', 'verification', 'scripts'}
+% analysis/ is tracked but NOT on the path — .mat files are opened by
+% explicit path, so no addPath call is needed for that folder.
+for sub = {'requirements', 'architecture', 'analysis', 'verification', 'scripts'}
     addFolderIncludingChildFiles(proj, fullfile(rootDir, sub{1}));
 end
 addPath(proj, fullfile(rootDir, 'scripts'));
@@ -305,7 +307,7 @@ Otherwise, ask:
 Generate `scripts/runAnalysis.m` using patterns from the `mbse-analysis` skill:
 - `instantiate(arch, profileName, 'AnalysisName')` creates the instance
 - `getValue(ci, [prefix, 'PropertyName'])` returns double — no `str2double` needed
-- `save(instance, fullfile(archDir, 'AnalysisName.mat'))` for Analysis Viewer
+- `save(instance, fullfile(analysisDir, 'AnalysisName.mat'))` for Analysis Viewer — save to `analysis/`, not `architecture/`
 - Open with `systemcomposer.analysis.openViewer('AnalysisName')` (instance name, not file path)
 
 ### Checkpoint
@@ -434,7 +436,8 @@ Project: <Name>  (<root folder>)
 │   ├── <Name>Functional.slx       (functional model)
 │   ├── <Name>Interfaces.sldd      (interface dictionary)
 │   ├── <Name>Profile.xml          (stereotype profile)
-│   ├── <Name>Allocation.mldatx    (functional→physical allocation)
+│   └── <Name>Allocation.mldatx    (functional→physical allocation)
+├── analysis/
 │   └── <analysis>.mat             (analysis instance, if Phase 7 ran)
 ├── verification/
 │   └── <Name>Tests.mldatx         (if Phase 9 ran — requires simulation model)

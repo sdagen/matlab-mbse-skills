@@ -7,7 +7,8 @@ function setupFCSProject()
 %
 %   Project layout:
 %     requirements/   stakeholder needs, system requirements, test cases
-%     architecture/   System Composer models, interface dictionary, profile, analysis
+%     architecture/   System Composer models, interface dictionary, profile
+%     analysis/       analysis instances (.mat files for Analysis Viewer)
 %     verification/   (reserved — Simulink Test deferred until a simulation model exists)
 %     scripts/        build scripts (on MATLAB path via project)
 %     derived/        Simulink cache and codegen outputs (not tracked in project)
@@ -32,12 +33,13 @@ function setupFCSProject()
     % architecture/ and requirements/ must be on the project path so System
     % Composer resolves models by name and slreq stores relative paths in .slmx
     % files.  runChecks will fail with Project:Checks:ProjectPath otherwise.
-    for sub = {'requirements', 'architecture', 'verification', 'scripts'}
+    for sub = {'requirements', 'architecture', 'analysis', 'verification', 'scripts'}
         addFolderIncludingChildFiles(proj, fullfile(rootDir, sub{1}));
     end
     addPath(proj, fullfile(rootDir, 'scripts'));
     addPath(proj, fullfile(rootDir, 'architecture'));
     addPath(proj, fullfile(rootDir, 'requirements'));
+    % analysis/ is tracked but not on the path — .mat files are opened by explicit path
 
     %% Track root-level files that aren't in a tracked subfolder
     addFile(proj, fullfile(rootDir, 'README.md'));

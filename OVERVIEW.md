@@ -212,7 +212,8 @@ examples/fcs/
 │   ├── FCSInterfaces.sldd          6 typed interfaces (all Type="double")
 │   ├── FCSBudget.xml               BudgetProperties stereotype profile
 │   ├── FCSFunctional.slx           Functional model: 6 logical functions
-│   ├── FCSAllocation.mldatx        Functional→physical allocation set
+│   └── FCSAllocation.mldatx        Functional→physical allocation set
+├── analysis/
 │   └── PowerMassRollup.mat         Analysis instance for Analysis Viewer
 └── verification/
     └── (Simulink Test deferred — no simulation model yet)
