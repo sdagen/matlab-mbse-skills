@@ -1,11 +1,33 @@
 # MATLAB MBSE Skills
 
 A collection of Claude skills and a worked example for Model-Based Systems Engineering
-(MBSE) in MATLAB. The skills encode correct API patterns, proven script structures,
-and hard-won gotchas for the full MBSE workflow — from stakeholder needs through
-verified test cases.
+(MBSE) in MATLAB — from stakeholder needs through verified test cases, with full
+bidirectional traceability.
 
-See [OVERVIEW.md](OVERVIEW.md) for a detailed description of the full capability.
+---
+
+## Getting Started: Guided Project Setup
+
+The primary way to use these skills is through the **`mbse-new-project` guided
+workflow**. Tell Claude you want to start a new MBSE project and it will:
+
+1. **Interview you** — system name, location, description, subsystems, engineering
+   concerns (mass, power, cost, …), analysis needs, and whether a simulation model exists
+2. **Propose content at each phase** — stakeholder needs, system requirements,
+   components, interfaces, functions, allocations, test cases — waiting for your
+   approval before generating anything
+3. **Generate and run each build script** — one phase at a time, showing you the
+   output and asking you to confirm before moving on
+4. **Produce a complete, runnable MATLAB project** — with a `.prj` file, 7 idempotent
+   build scripts, all artifacts, and a `buildAll()` entry point that rebuilds
+   everything from scratch
+
+The result is a project like the [FCS example](examples/fcs/) — a full MBSE artifact
+set with requirements, architecture, allocation, analysis, and test cases all wired
+together with traceable links.
+
+To start, just say something like:
+> *"I want to set up a new MBSE project for a [your system]"*
 
 ---
 
@@ -27,12 +49,12 @@ Simulink Test is supported but not required — see [Two-Tier Verification](OVER
 ```
 matlab-mbse-skills/
 ├── skills/
+│   ├── mbse-new-project/      Guided end-to-end setup (start here for new projects)
 │   ├── mbse/                  Requirements + verification API patterns
-│   ├── mbse-new-project/      Guided end-to-end new project setup
 │   ├── mbse-architecture/     Architecture, allocation, and analysis
 │   └── system-composer/       Deep System Composer API reference
 └── examples/
-    └── fcs/                   Flight Control System — full end-to-end example
+    └── fcs/                   Flight Control System — complete reference example
         ├── FCSSystem.prj      MATLAB project (open this first)
         ├── scripts/           All build scripts
         ├── requirements/      SN + SR sets, TC requirements
@@ -40,24 +62,14 @@ matlab-mbse-skills/
         └── verification/      (reserved — Simulink Test deferred)
 ```
 
----
-
-## Using the Skills
-
-Each folder under `skills/` contains a `SKILL.md` that can be loaded as a Claude
-Code skill. Skills are invoked automatically when you describe a task that matches
-their trigger conditions, or you can reference them by name.
-
-The `mbse-new-project` skill is the entry point for new projects — it conducts an
-interview and walks through each phase one at a time, proposing content, waiting for
-approval, generating the script, and running it. The other skills provide the detailed
-API patterns that `mbse-new-project` draws on.
+The `mbse-new-project` skill drives the conversation and generates scripts; it draws
+on `mbse`, `mbse-architecture`, and `system-composer` for the technical API patterns.
 
 ---
 
-## Running the FCS Example
+## FCS Reference Example
 
-Open the project, then run the full build in one command:
+The FCS example shows what a completed project looks like. Open it and run:
 
 ```matlab
 openProject('path/to/examples/fcs')
@@ -76,20 +88,21 @@ Step 6  rollupAnalysis()          PowerMassRollup.mat (power 408/450 W, mass 33/
 Step 7  buildFCSTestCases()       TestCases.slreqx, 13 TCs with Verify links
 ```
 
-`buildFCSAll()` runs all steps and prints a `runChecks` project health report at the end.
+See [OVERVIEW.md](OVERVIEW.md) for a full description of the workflow, artifacts,
+and design principles.
 
 ---
 
-## Workflow Summary
+## Traceability
 
 ```
 Stakeholder Need  (StakeholderNeeds.slreqx)
     └─[Derive]─▶  System Requirement  (SystemRequirements.slreqx)
-                      ├─[Refine]─▶  Architecture Component  (FCSSystem.slx)
+                      ├─[Refine]─▶  Architecture Component  (System.slx)
                       │                 ▲
-                      │             [Allocate]  (FCSAllocation.mldatx)
+                      │             [Allocate]  (Allocation.mldatx)
                       │                 │
-                      │             Logical Function  (FCSFunctional.slx)
+                      │             Logical Function  (Functional.slx)
                       └─[Verify]─▶  TC Requirement  (TestCases.slreqx)
                                         └─[Verify]─▶  Simulink Test Case  (Tier 2, if model exists)
 ```

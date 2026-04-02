@@ -6,15 +6,59 @@ through verified test cases, with traceability at every step.
 
 ---
 
+## Guided Project Setup
+
+The primary interaction model is a **conversational, phase-by-phase guided workflow**
+driven by the `mbse-new-project` skill. A new user does not need to know the MATLAB
+APIs or the script patterns — Claude handles all of that.
+
+### How it works
+
+Claude conducts a short interview to understand the system, then works through each
+phase one at a time:
+
+```
+Phase 0 — Interview
+  Claude asks: system name, location, description, subsystems, engineering
+  concerns (mass, power, cost, …), analysis needs, simulation model availability.
+  Then creates the MATLAB project, folder structure, and registerWithProject helper.
+
+For each subsequent phase (1–9):
+  1. Propose  — Claude drafts the content in plain language and shows it to you
+  2. Approve  — you review and request changes, or say "looks good"
+  3. Generate — Claude writes the build script
+  4. Run      — Claude executes the script via MATLAB MCP
+  5. Confirm  — Claude shows the output and asks if it looks right before continuing
+```
+
+Every script is idempotent, so if you reject a checkpoint, Claude revises and
+reruns — no state to undo.
+
+### What you get
+
+A complete MATLAB project with a `.prj` file, 7 idempotent build scripts, all
+generated artifacts, and a single `buildAll()` entry point that rebuilds everything
+from scratch. See the [FCS example](../examples/fcs/) for what a finished project
+looks like.
+
+### Starting a guided session
+
+Just tell Claude what you want to build:
+> *"I want to set up a new MBSE project for an eVTOL propulsion system"*
+
+The `mbse-new-project` skill activates automatically and begins the interview.
+
+---
+
 ## Skills
 
-Four Claude skills live in `skills/`. Each encodes the correct API patterns, common
-gotchas, and proven script structures for one or more phases of the MBSE workflow.
+Four Claude skills live in `skills/`. `mbse-new-project` drives the conversation;
+the others provide the technical API patterns it draws on.
 
 | Skill | Purpose |
 |---|---|
+| `mbse-new-project` | Guided end-to-end setup — interview, propose, generate, run, confirm |
 | `mbse` | Requirements API, two-level hierarchy, derivation/verify links, two-tier verification |
-| `mbse-new-project` | Guided end-to-end setup — interviews the user, proposes content phase by phase, generates and runs each script |
 | `mbse-architecture` | Physical + functional architecture, profiles/stereotypes, allocation, analysis |
 | `system-composer` | Deep System Composer API reference — connection syntax, dictionary patterns, profile gotchas, layout |
 
