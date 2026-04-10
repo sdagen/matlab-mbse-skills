@@ -111,24 +111,14 @@ mkdir(fullfile(rootDir, 'derived', 'codegen'));
 proj.SimulinkCacheFolder   = fullfile(rootDir, 'derived', 'cache');
 proj.SimulinkCodeGenFolder = fullfile(rootDir, 'derived', 'codegen');
 
-% Track MBSE folders and put scripts/, architecture/, and requirements/ on
-% the MATLAB path. Do NOT track derived/ — it contains generated build outputs.
-% Path management is handled entirely by the project — no startup.m needed.
-% Each build script handles its own state cleanup (slreq.clear, closeAll, etc.)
-% at the top, so there is nothing project-startup-specific to do.
-%
-% IMPORTANT: architecture/ and requirements/ must also be on the project path
-% so that System Composer can resolve models by name and slreq can store
-% relative paths in .slmx link files. runChecks will fail with
-% Project:Checks:ProjectPath if folders are tracked but not on the path.
-% analysis/ is tracked but NOT on the path — .mat files are opened by
-% explicit path, so no addPath call is needed for that folder.
+% Track all MBSE folders and add each to the MATLAB path. Do NOT track
+% derived/ — it contains generated build outputs.
+% IMPORTANT: all tracked folders must also be on the project path or
+% runChecks will fail with Project:Checks:ProjectPath.
 for sub = {'requirements', 'architecture', 'analysis', 'verification', 'scripts'}
     addFolderIncludingChildFiles(proj, fullfile(rootDir, sub{1}));
+    addPath(proj, fullfile(rootDir, sub{1}));
 end
-addPath(proj, fullfile(rootDir, 'scripts'));
-addPath(proj, fullfile(rootDir, 'architecture'));
-addPath(proj, fullfile(rootDir, 'requirements'));
 
 % Shortcuts point to specific tracked files — add them as files are created.
 % E.g. after Phase 9: addShortcut(proj, fullfile(rootDir, 'scripts', 'buildAll.m'))

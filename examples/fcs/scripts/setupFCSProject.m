@@ -35,11 +35,8 @@ function setupFCSProject()
     % files.  runChecks will fail with Project:Checks:ProjectPath otherwise.
     for sub = {'requirements', 'architecture', 'analysis', 'verification', 'scripts'}
         addFolderIncludingChildFiles(proj, fullfile(rootDir, sub{1}));
+        addPath(proj, fullfile(rootDir, sub{1}));
     end
-    addPath(proj, fullfile(rootDir, 'scripts'));
-    addPath(proj, fullfile(rootDir, 'architecture'));
-    addPath(proj, fullfile(rootDir, 'requirements'));
-    % analysis/ is tracked but not on the path — .mat files are opened by explicit path
 
     %% Track root-level files that aren't in a tracked subfolder
     addFile(proj, fullfile(rootDir, 'README.md'));
