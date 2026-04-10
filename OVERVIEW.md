@@ -52,14 +52,16 @@ The `mbse-new-project` skill activates automatically and begins the interview.
 
 ## Skills
 
-Four Claude skills live in `skills/`. `mbse-new-project` drives the conversation;
+Six Claude skills live in `skills/`. `mbse-new-project` drives the conversation;
 the others provide the technical API patterns it draws on.
 
 | Skill | Purpose |
 |---|---|
 | `mbse-new-project` | Guided end-to-end setup — interview, propose, generate, run, confirm |
-| `mbse` | Requirements API, two-level hierarchy, derivation/verify links, two-tier verification |
-| `mbse-architecture` | Physical + functional architecture, profiles/stereotypes, allocation, analysis |
+| `mbse` | Thin workflow index — which skill covers which phase |
+| `mbse-architecture` | Physical + functional architecture, profiles/stereotypes, allocation set, analysis |
+| `simulink-requirements` | All slreq API — requirements creation, links, traceability analysis, coverage, Phase 5 Refine links |
+| `simulink-test` | Simulink Test `.mldatx` files — test suites, test cases, Tier 2 verification |
 | `system-composer` | Deep System Composer API reference — connection syntax, dictionary patterns, profile gotchas, layout |
 
 ---
@@ -164,7 +166,7 @@ Stakeholder Need  (StakeholderNeeds.slreqx)
 ```
 
 All links are bidirectional and navigable from either end in the Requirements Editor
-or programmatically via `slreq.outLinks` / `slreq.inLinks`.
+or programmatically via `req.outLinks()` / `req.inLinks()`.
 
 ---
 

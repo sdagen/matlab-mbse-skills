@@ -50,8 +50,10 @@ Simulink Test is supported but not required — see [Two-Tier Verification](OVER
 matlab-mbse-skills/
 ├── skills/
 │   ├── mbse-new-project/      Guided end-to-end setup (start here for new projects)
-│   ├── mbse/                  Requirements + verification API patterns
-│   ├── mbse-architecture/     Architecture, allocation, and analysis
+│   ├── mbse/                  Thin workflow index — which skill covers which phase
+│   ├── mbse-architecture/     Architecture, allocation set, and analysis
+│   ├── simulink-requirements/ All slreq API — requirements, links, traceability, coverage
+│   ├── simulink-test/         Simulink Test .mldatx files (Tier 2 verification)
 │   └── system-composer/       Deep System Composer API reference
 └── examples/
     └── fcs/                   Flight Control System — complete reference example
@@ -63,7 +65,8 @@ matlab-mbse-skills/
 ```
 
 The `mbse-new-project` skill drives the conversation and generates scripts; it draws
-on `mbse`, `mbse-architecture`, and `system-composer` for the technical API patterns.
+on `simulink-requirements`, `mbse-architecture`, `simulink-test`, and `system-composer`
+for the technical API patterns.
 
 ---
 
@@ -108,4 +111,4 @@ Stakeholder Need  (StakeholderNeeds.slreqx)
 ```
 
 All links are bidirectional and navigable from either end in the Requirements Editor
-or programmatically via `slreq.outLinks` / `slreq.inLinks`.
+or programmatically via `req.outLinks()` / `req.inLinks()`.
