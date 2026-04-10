@@ -169,6 +169,14 @@ end
 
 Every build script must call `registerWithProject` at the end, passing the files it creates. `buildAll.m` additionally registers all script files. This keeps the MATLAB Project in sync with the file system without manual intervention.
 
+**Removing files from the project:** If a file that is tracked in the MATLAB project needs to be deleted (e.g., when renaming an artifact or replacing it with a new one), you must call `removeFile(proj, filePath)` *before* deleting the file from disk. A bare `delete()` removes the file but leaves a broken reference in the project, causing health check failures.
+
+```matlab
+proj = currentProject();
+removeFile(proj, fullfile(archDir, 'OldArtifact.sldd'));  % untrack first
+delete(fullfile(archDir, 'OldArtifact.sldd'));             % then remove from disk
+```
+
 ---
 
 ## Phase 1: Requirements

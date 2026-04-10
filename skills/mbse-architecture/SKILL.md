@@ -146,6 +146,15 @@ end
 - `addpath(archDir)` before `createDictionary` and `createModel` — SC resolves files via MATLAB path
 - `Simulink.data.dictionary.closeAll("-discard")` before creating a new dictionary — stale handles from a prior run block `createDictionary`
 - Re-fetch interfaces after `dict.save()` before calling `setInterface` — handles become stale across a save
+- **Before deleting a file that is tracked in a MATLAB project, call `removeFile(proj, filePath)` first.** A bare `delete()` removes the file from disk but leaves a broken reference in the project, which causes health check failures. Pattern:
+
+```matlab
+proj = currentProject();
+removeFile(proj, fullfile(archDir, 'OldFile.sldd'));  % untrack first
+delete(fullfile(archDir, 'OldFile.sldd'));             % then remove from disk
+```
+
+If the file no longer exists on disk (already deleted) but is still tracked, call `removeFile` without `delete`. If no project is open, `currentProject()` errors — guard with `matlab.project.rootProject()` if needed.
 
 ---
 
