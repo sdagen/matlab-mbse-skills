@@ -60,7 +60,7 @@ the others provide the technical API patterns it draws on.
 | `mbse-new-project` | Guided end-to-end setup — interview, propose, generate, run, confirm |
 | `mbse` | Thin workflow index — which skill covers which phase |
 | `mbse-architecture` | Physical + functional architecture, profiles/stereotypes, allocation set, analysis |
-| `simulink-requirements` | All slreq API — requirements creation, links, traceability analysis, coverage, Phase 5 Refine links |
+| `simulink-requirements` | All slreq API — requirements creation, links, traceability analysis, coverage |
 | `simulink-test` | Simulink Test `.mldatx` files — test suites, test cases, Tier 2 verification |
 | `system-composer` | Deep System Composer API reference — connection syntax, dictionary patterns, profile gotchas, layout |
 
@@ -74,59 +74,43 @@ The MBSE workflow runs in seven steps. Each step is a separate idempotent build 
 
 - Write **Stakeholder Needs** (what the system must do, in operator terms)
 - Derive **System Requirements** from stakeholder needs, linked with `Derive`
-- Budget constraints (power, mass, cost, etc.) live in requirements — scripts read
-  them at run time via `parseBudgetValue`; values are never hard-coded in scripts
-- `addpath(reqDir)` before `slreq.clear()` ensures `.slmx` link files store relative
-  paths, keeping the project portable
+- Budget constraints (power, mass, cost, etc.) live in requirements; analysis scripts
+  read them at run time so values are never hard-coded
 - Artifacts: `StakeholderNeeds.slreqx`, `SystemRequirements.slreqx`
 
 ### Step 2 — Functional Architecture
 
 - Build a System Composer model for the **logical functions** of the system,
   independent of physical implementation
-- Create a **functional interface dictionary** (`FunctionalInterfaces.sldd`) with
-  logical, abstract interfaces — semantic field names, no physical units or
-  implementation detail (e.g. `PowerSignal` with a single `Power` element rather
-  than `ElectricalPower` with `Voltage` and `Current`)
-- This script runs independently — no dependency on the physical model
-- `addpath(archDir)` before `createDictionary`; re-fetch interfaces after `dict.save()`
+- Create a **functional interface dictionary** with logical, abstract interfaces —
+  semantic names and flows, no physical units or implementation detail
 - Artifacts: `Functional.slx`, `FunctionalInterfaces.sldd`
 
 ### Step 3 — Physical Architecture + Profile
 
 - Build a System Composer model with typed components and ports
-- Create a **physical interface dictionary** (`PhysicalInterfaces.sldd`) with
-  implementation-level interfaces — concrete field names, specific types, physical units
-  (e.g. `ElectricalPower` with `Voltage` and `Current` elements)
-- This script also runs independently — no dependency on the functional model
-- At the end of the same script, create a **profile** with a `BudgetProperties`
-  stereotype and apply it to all components with initial estimates
-- `profile.save(archDir)` — always pass the folder, never a `.xml` path
-  (passing a `.xml` path silently creates a directory instead of a file)
-- Call `open_system(char(modelName))` after `save_system` to show the SC editor
+- Create a **physical interface dictionary** with implementation-level interfaces —
+  concrete field names, specific types, and physical units
+- Define a **profile** with a `BudgetProperties` stereotype and apply it to all
+  components with initial property estimates (mass, power, cost, etc.)
 - Artifacts: `System.slx`, `PhysicalInterfaces.sldd`, `Profile.xml`
 
 ### Step 4 — Functional→Physical Allocation
 
 - Create an allocation set mapping each logical function to the physical component(s)
   that implement it (ARP4754A functional allocation tier)
-- In-memory allocation set name must differ from the file base name to avoid a
-  uniqueness collision when saving
 - Artifact: `Allocation.mldatx`
 
 ### Step 5 — Requirements Allocation
 
 - Create `Refine` links from each SR to the component(s) responsible for implementing it
-- Scripts are idempotent — existing Refine links are removed before rebuild
 - Navigate forward (requirement → components) and backward (component → requirements)
 
 ### Step 6 — Analysis (optional)
 
-- Create an **analysis instance** from the architecture profile using `instantiate`
-- Read property values with `getValue` (returns `double` directly — no str2double)
+- Create an **analysis instance** from the architecture profile
 - Compute system-level roll-ups and per-component margins
-- Write computed margins back to the instance with `setValue`
-- Budget caps come from requirements (parsed at run time); no magic numbers in scripts
+- Budget caps are read from requirements at run time
 - Save the instance as a `.mat` file for the Analysis Viewer
 - Artifact: `Analysis.mat`
 
@@ -182,15 +166,13 @@ or programmatically via `req.outLinks()` / `req.inLinks()`.
 Each project uses a MATLAB project file (`.prj`) created once by `setupProject.m`.
 The project provides:
 
-- **Path management** — `scripts/`, `architecture/`, and `requirements/` are all on
-  the project path (required so System Composer resolves models by name and slreq
-  stores relative paths in `.slmx` files)
-- **Derived folders** — `derived/cache` and `derived/codegen` are set as
-  `SimulinkCacheFolder` and `SimulinkCodeGenFolder` using absolute paths
-- **File tracking** — `registerWithProject(files)` is called at the end of each
-  build script to keep the project in sync with the file system
-- **Health checks** — `runChecks(proj)` runs at the end of `buildAll.m` to surface
-  issues like untracked files or path inconsistencies immediately
+- **Path management** — all project folders are on the MATLAB path, so System Composer
+  resolves models by name and tools find artifacts without absolute paths
+- **Derived folders** — Simulink cache and codegen outputs are kept out of source control
+- **File tracking** — build scripts register the artifacts they create; the project
+  stays in sync with the file system automatically
+- **Health checks** — `buildAll.m` runs project checks at the end and surfaces any
+  issues immediately
 
 ---
 
@@ -206,8 +188,8 @@ examples/fcs/
 │   ├── registerWithProject.m   Shared helper for project file registration
 │   ├── buildFCSAll.m           Run everything in one command
 │   ├── buildFCSRequirements.m  Step 1: stakeholder needs + system requirements
-│   ├── buildFCSModel.m         Step 2: physical model + interface dict + profile
-│   ├── buildFCSFunctional.m    Step 3: functional architecture model
+│   ├── buildFCSFunctional.m    Step 2: functional architecture model
+│   ├── buildFCSModel.m         Step 3: physical model + interface dict + profile
 │   ├── buildFCSAllocationSet.m Step 4: function-to-component allocation set
 │   ├── buildFCSAllocation.m    Step 5: SR-to-component Refine links
 │   ├── rollupAnalysis.m        Step 6: power + mass roll-up analysis
@@ -217,28 +199,17 @@ examples/fcs/
 │   ├── SystemRequirements.slreqx   15 system requirements (SR-FCS-001 to 015)
 │   └── TestCases.slreqx            13 test cases (TC-FCS-001 to 013)
 ├── architecture/
-│   ├── FCSSystem.slx               Physical model: 6 components, 10 connections
-│   ├── FCSInterfaces.sldd          6 typed interfaces (all Type="double")
-│   ├── FCSBudget.xml               BudgetProperties stereotype profile
-│   ├── FCSFunctional.slx           Functional model: 6 logical functions
-│   └── FCSAllocation.mldatx        Functional→physical allocation set
+│   ├── FCSFunctional.slx               Functional model: 6 logical functions
+│   ├── FCSFunctionalInterfaces.sldd    6 logical interfaces (abstract flows)
+│   ├── FCSSystem.slx                   Physical model: 6 components, 10 connections
+│   ├── FCSPhysicalInterfaces.sldd      6 typed interfaces (concrete, physical units)
+│   ├── FCSBudget.xml                   BudgetProperties stereotype profile
+│   └── FCSAllocation.mldatx            Functional→physical allocation set
 ├── analysis/
 │   └── PowerMassRollup.mat         Analysis instance for Analysis Viewer
 └── verification/
     └── (Simulink Test deferred — no simulation model yet)
 ```
-
-### FCS Analysis Results
-
-| | Budget | Estimate | Margin | Utilisation |
-|---|---|---|---|---|
-| Power | 450 W | 408 W | +42 W | 90.7% |
-| Mass | 35 kg | 33 kg | +2 kg | 94.3% |
-
-### FCS Verification Coverage
-
-13 of 15 SRs covered by TC requirements. SR-FCS-014 (power cap) and SR-FCS-015
-(mass cap) are verified by `rollupAnalysis` — expected NOT COVERED in TC report.
 
 ---
 
@@ -250,20 +221,7 @@ examples/fcs/
   live in requirements and are parsed by analysis scripts at run time
 - **Profile in the model script** — stereotype creation and application lives at the
   end of `buildModel.m`, not in a separate profile script; both are always in sync
-- **Analysis instance pattern** — `instantiate` / `getValue` / `setValue` / `save`
-  rather than reading raw stereotype property strings
 - **Bidirectional traceability** — every link is navigable in both directions
-- **Project-integrated** — `registerWithProject` + `runChecks` keep the MATLAB project
-  in sync and surface issues on every build
+- **Project-integrated** — build scripts keep the MATLAB project in sync; health
+  checks run automatically on every full build
 
-### Key API Gotchas
-
-| Symptom | Root cause | Fix |
-|---|---|---|
-| Connections missing silently | `connect(arch, src, dst)` dispatches to Control System Toolbox | Use `connect(src, dst)` — no arch argument |
-| "Unable to resolve interface" on reopen | `setInterface` called before `dict.save()` | Always save dict, then re-fetch interfaces before use |
-| `addElement` breaks bus compiler | `Type="MyValueType"` creates unresolvable `Simulink.ValueType` | Use `Type="double"` for all elements |
-| Profile saved as a directory | `profile.save(fullfile(archDir, 'Name.xml'))` treats path as folder | Pass the folder: `profile.save(archDir)` |
-| SC editor doesn't open after build | `createModel` + `save_system` doesn't show SC editor | Call `open_system(char(modelName))` after saving |
-| `.slmx` stores absolute paths | `slreq` called before `addpath(reqDir)` | Add `addpath(reqDir)` before `slreq.clear()` |
-| `Project:Checks:ProjectPath` failure | Folder on MATLAB path but not on project path | Call `addPath(proj, folder)` in addition to `addFolderIncludingChildFiles` |
