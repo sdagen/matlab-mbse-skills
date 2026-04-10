@@ -110,19 +110,15 @@ The MBSE workflow runs in seven steps. Each step is a separate idempotent build 
 
 ### Step 6 — Analysis (optional)
 
-- Create an **analysis instance** from the architecture profile
-- Compute system-level roll-ups and per-component margins
+- Compute system-level roll-ups and per-component margins from the architecture profile
 - Budget caps are read from requirements at run time
-- Save the instance as a `.mat` file for the Analysis Viewer
 - Artifact: `Analysis.mat`
 
 ### Step 7 — Test Cases
 
-- Create a `TestCases.slreqx` requirement set with one TC requirement per SR
-- Each TC describes: setup, stimulus, and measurable pass criterion
+- Create one TC requirement per SR, each describing a stimulus and measurable pass criterion
 - Link each TC to its SR with a `Verify` link
-- Generate a coverage report — which SRs are covered, which are not
-- Budget cap SRs (verified by analysis in Step 6) are expected NOT COVERED here
+- Generate a coverage report; SRs verified by analysis (Step 6) are expected not covered
 - Artifact: `TestCases.slreqx`
 
 ---
