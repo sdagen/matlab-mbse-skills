@@ -38,7 +38,7 @@ reruns — no state to undo.
 
 A complete MATLAB project with a `.prj` file, 7 idempotent build scripts, all
 generated artifacts, and a single `buildAll()` entry point that rebuilds everything
-from scratch. See the [FCS example](../examples/fcs/) for what a finished project
+from scratch. See the [FCS example](examples/fcs/README.md) for what a finished project
 looks like.
 
 ### Starting a guided session
@@ -180,38 +180,7 @@ The project provides:
 
 ## FCS Worked Example
 
-The Flight Control System (`examples/fcs/`) demonstrates every step end-to-end.
-
-```
-examples/fcs/
-├── FCSSystem.prj               MATLAB project (open before running scripts)
-├── scripts/
-│   ├── setupFCSProject.m       Create the MATLAB project (run once)
-│   ├── registerWithProject.m   Shared helper for project file registration
-│   ├── buildFCSAll.m           Run everything in one command
-│   ├── buildFCSRequirements.m  Step 1: stakeholder needs + system requirements
-│   ├── buildFCSFunctional.m    Step 2: functional architecture model
-│   ├── buildFCSModel.m         Step 3: physical model + interface dict + profile
-│   ├── buildFCSAllocationSet.m Step 4: function-to-component allocation set
-│   ├── buildFCSAllocation.m    Step 5: SR-to-component Refine links
-│   ├── rollupAnalysis.m        Step 6: power + mass roll-up analysis
-│   └── buildFCSTestCases.m     Step 7: TC requirements + Verify links
-├── requirements/
-│   ├── StakeholderNeeds.slreqx     6 stakeholder needs (SN-FCS-001 to 006)
-│   ├── SystemRequirements.slreqx   15 system requirements (SR-FCS-001 to 015)
-│   └── TestCases.slreqx            13 test cases (TC-FCS-001 to 013)
-├── architecture/
-│   ├── FCSFunctional.slx               Functional model: 6 logical functions
-│   ├── FCSFunctionalInterfaces.sldd    6 logical interfaces (abstract flows)
-│   ├── FCSSystem.slx                   Physical model: 6 components, 10 connections
-│   ├── FCSPhysicalInterfaces.sldd      6 typed interfaces (concrete, physical units)
-│   ├── FCSBudget.xml                   Component profile (FCS tracks power + mass budgets)
-│   └── FCSAllocation.mldatx            Functional→physical allocation set
-├── analysis/
-│   └── PowerMassRollup.mat         Analysis instance for Analysis Viewer
-└── verification/
-    └── (Simulink Test deferred — no simulation model yet)
-```
+The [FCS example](examples/fcs/README.md) demonstrates every step end-to-end.
 
 ---
 
@@ -219,11 +188,12 @@ examples/fcs/
 
 - **Idempotent scripts** — every script deletes and recreates its artifacts on each
   run; safe to re-run at any point without accumulating stale data
-- **Requirements as the source of truth** — budget caps and quantitative constraints
-  live in requirements and are parsed by analysis scripts at run time
-- **Profile in the model script** — stereotype creation and application lives at the
-  end of `buildModel.m`, not in a separate profile script; both are always in sync
-- **Bidirectional traceability** — every link is navigable in both directions
 - **Project-integrated** — build scripts keep the MATLAB project in sync; health
   checks run automatically on every full build
+- **Skills are organized by API domain** — each skill covers one MATLAB toolbox or
+  API surface (`slreq`, System Composer, Simulink Test). When an operation spans
+  domains, it lives in the skill that owns the primary API, with a pointer from the other
+- **`mbse-new-project` orchestrates; domain skills are reference** — the workflow
+  skill handles phase sequencing and user interaction; it draws on the domain skills
+  for API patterns rather than duplicating them. The two concerns can evolve independently
 

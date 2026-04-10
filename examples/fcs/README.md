@@ -55,6 +55,37 @@ all 7 steps in sequence and prints a `runChecks` project health report at the en
 
 ## Files
 
+```
+examples/fcs/
+├── FCSSystem.prj               MATLAB project (open before running scripts)
+├── scripts/
+│   ├── setupFCSProject.m       Create the MATLAB project (run once)
+│   ├── registerWithProject.m   Shared helper for project file registration
+│   ├── buildFCSAll.m           Run everything in one command
+│   ├── buildFCSRequirements.m  Step 1: stakeholder needs + system requirements
+│   ├── buildFCSFunctional.m    Step 2: functional architecture model
+│   ├── buildFCSModel.m         Step 3: physical model + interface dict + profile
+│   ├── buildFCSAllocationSet.m Step 4: function-to-component allocation set
+│   ├── buildFCSAllocation.m    Step 5: SR-to-component Refine links
+│   ├── rollupAnalysis.m        Step 6: power + mass roll-up analysis
+│   └── buildFCSTestCases.m     Step 7: TC requirements + Verify links
+├── requirements/
+│   ├── StakeholderNeeds.slreqx
+│   ├── SystemRequirements.slreqx
+│   └── TestCases.slreqx
+├── architecture/
+│   ├── FCSFunctional.slx               Functional model: 6 logical functions
+│   ├── FCSFunctionalInterfaces.sldd    6 logical interfaces (abstract flows)
+│   ├── FCSSystem.slx                   Physical model: 6 components, 10 connections
+│   ├── FCSPhysicalInterfaces.sldd      6 typed interfaces (concrete, physical units)
+│   ├── FCSBudget.xml                   Component profile (power + mass properties)
+│   └── FCSAllocation.mldatx            Functional→physical allocation set
+├── analysis/
+│   └── PowerMassRollup.mat
+└── verification/
+    └── (Simulink Test deferred — no simulation model yet)
+```
+
 ### `scripts/`
 
 All build scripts live here. The project puts this folder on the MATLAB path.
@@ -65,8 +96,8 @@ All build scripts live here. The project puts this folder on the MATLAB path.
 | `registerWithProject.m` | Shared helper — registers files/folders with open project |
 | `buildFCSAll.m` | Orchestrates all 7 steps; runs `runChecks` at the end |
 | `buildFCSRequirements.m` | `StakeholderNeeds.slreqx` (6 items), `SystemRequirements.slreqx` (15 items), Derive links |
-| `buildFCSModel.m` | `FCSSystem.slx`, `FCSInterfaces.sldd`, `FCSBudget.xml` (profile) |
-| `buildFCSFunctional.m` | `FCSFunctional.slx` (6 logical functions) |
+| `buildFCSFunctional.m` | `FCSFunctional.slx` (6 logical functions), `FCSFunctionalInterfaces.sldd` |
+| `buildFCSModel.m` | `FCSSystem.slx`, `FCSPhysicalInterfaces.sldd`, `FCSBudget.xml` (profile) |
 | `buildFCSAllocationSet.m` | `FCSAllocation.mldatx` (functional→physical allocation) |
 | `buildFCSAllocation.m` | Refine links: 13 SRs → components (25 links total) |
 | `rollupAnalysis.m` | `PowerMassRollup.mat` (analysis instance for Analysis Viewer) |
@@ -88,10 +119,11 @@ Generated artifacts — do not edit by hand.
 
 | File | Description |
 |---|---|
-| `FCSSystem.slx` | Physical System Composer model (6 components, 10 connections) |
-| `FCSInterfaces.sldd` | Interface dictionary (6 typed interfaces, all elements `Type="double"`) |
-| `FCSBudget.xml` | Profile: `BudgetProperties` stereotype with PowerBudget\_W, PowerEstimate\_W, PowerMargin\_W, Mass\_kg applied to all components |
 | `FCSFunctional.slx` | Functional System Composer model (6 logical functions) |
+| `FCSFunctionalInterfaces.sldd` | 6 logical interfaces — abstract flows, no physical units |
+| `FCSSystem.slx` | Physical System Composer model (6 components, 10 connections) |
+| `FCSPhysicalInterfaces.sldd` | 6 typed interfaces — concrete fields, physical units |
+| `FCSBudget.xml` | Component profile: `BudgetProperties` stereotype with PowerBudget\_W, PowerEstimate\_W, PowerMargin\_W, Mass\_kg applied to all components |
 | `FCSAllocation.mldatx` | Functional→physical allocation set (scenario: FunctionalToPhysical) |
 
 ### `analysis/`
@@ -163,4 +195,4 @@ Logical function allocation:
 ```
 
 All links are bidirectional and navigable from either end in the Requirements Editor
-or programmatically via `slreq.outLinks` / `slreq.inLinks`.
+or programmatically via `req.outLinks()` / `req.inLinks()`.
