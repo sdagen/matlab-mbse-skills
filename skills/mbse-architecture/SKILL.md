@@ -28,46 +28,65 @@ Before writing any code, decide whether you need one or two SC models:
 - **Two models (recommended for ARP4754A compliance)** — separate functional and
   physical models linked by a System Composer allocation set
 
-Two separate models is the standard MBSE approach and provides explicit,
-navigable functional→physical traceability. Architecture Views are display
-filters on a single model, not a separate tier.
+Two separate models is the standard MBSE approach. **Functional architecture is
+designed first** — it captures *what* the system does as logical functions with
+abstract interfaces, independent of any physical realization. **Physical
+architecture is designed second** — it captures *how* the system is implemented
+in terms of hardware/software components with concrete physical interfaces.
 
-### Physical architecture model (`MySystem.slx`)
+Each model has its own interface dictionary at the appropriate abstraction level:
 
-What the system *implements* — hardware/software components, interfaces,
-and stereotype properties. Build this first; it owns the interface dictionary.
+| Dictionary | Abstraction level | Interface style |
+|---|---|---|
+| `MyFunctionalInterfaces.sldd` | Logical | Abstract flows — semantic names, minimal elements |
+| `MyPhysicalInterfaces.sldd` | Implementation | Concrete types — specific fields, physical units |
 
-### Functional architecture model (`MyFunctional.slx`)
+The two dictionaries are independent. Neither model script depends on the other
+being open.
 
-What the system *does* — logical functions independent of physical implementation.
-Shares the same interface dictionary as the physical model.
+---
+
+### Functional architecture model (`MyFunctional.slx`) — build first
+
+What the system *does* — logical functions and the abstract information flows
+between them. Creates and owns the functional interface dictionary.
 
 ```matlab
 function buildMyFunctional()
     rootDir   = fileparts(fileparts(mfilename('fullpath')));
     archDir   = fullfile(rootDir, 'architecture');
-    modelName = "MyFunctional";               % double-quoted string
-    dictFile  = fullfile(archDir, 'MyInterfaces.sldd');
-
-    % Get interfaces from physical model (already in memory)
-    addpath(archDir);
-    physModel = systemcomposer.openModel('MySystem');
-    dict      = physModel.InterfaceDictionary; % correct — not systemcomposer.loadDictionary
-    myIface   = dict.getInterface('MyInterface');
+    modelName = "MyFunctional";
+    dictFile  = fullfile(archDir, 'MyFunctionalInterfaces.sldd');
+    slxFile   = fullfile(archDir, char(modelName) + ".slx");
 
     if bdIsLoaded(modelName), close_system(modelName, 0); end
-    slxFile = fullfile(archDir, char(modelName) + ".slx");  % double-quoted string required
-    if isfile(slxFile), delete(slxFile); end
+    Simulink.data.dictionary.closeAll("-discard");
+    if isfile(dictFile), delete(dictFile); end
+    if isfile(slxFile),  delete(slxFile);  end
+
+    addpath(archDir);
+    dict = systemcomposer.createDictionary(dictFile);
+
+    % Add logical interfaces — abstract, no physical implementation detail
+    myFlowIface = addInterface(dict, "MyFlow");
+    addElement(myFlowIface, "Value", Type="double");
+    % ... more interfaces ...
+    dict.save();
+
+    % Re-fetch after save (required before use in setInterface)
+    myFlowIface = dict.getInterface("MyFlow");
+
     model = systemcomposer.createModel(modelName);
     arch  = model.Architecture;
     linkDictionary(model, strrep(dictFile, '\', '/'));
 
     funcA = addComponent(arch, 'FunctionA');
-    addTypedPort(funcA.Architecture, 'OutputA', 'out', myIface);
-    % ... more components, ports, connections ...
+    addTypedPort(funcA.Architecture, 'FlowOut', 'out', myFlowIface);
+    % ... more functions, ports, connections ...
 
     Simulink.BlockDiagram.arrangeSystem(modelName);
     save_system(char(modelName), char(fullfile(archDir, modelName)));
+    open_system(char(modelName));
 end
 
 function addTypedPort(compArch, name, direction, iface)
@@ -76,10 +95,57 @@ function addTypedPort(compArch, name, direction, iface)
 end
 ```
 
+---
+
+### Physical architecture model (`MySystem.slx`) — build second
+
+What the system *implements* — hardware/software components, physical interfaces,
+and stereotype properties. Creates and owns the physical interface dictionary.
+
+```matlab
+function buildMyModel()
+    rootDir   = fileparts(fileparts(mfilename('fullpath')));
+    archDir   = fullfile(rootDir, 'architecture');
+    modelName = "MySystem";
+    dictFile  = fullfile(archDir, 'MyPhysicalInterfaces.sldd');
+    slxFile   = fullfile(archDir, char(modelName) + ".slx");
+
+    if bdIsLoaded(modelName), close_system(modelName, 0); end
+    Simulink.data.dictionary.closeAll("-discard");
+    if isfile(dictFile), delete(dictFile); end
+    if isfile(slxFile),  delete(slxFile);  end
+
+    addpath(archDir);
+    dict = systemcomposer.createDictionary(dictFile);
+
+    % Add physical interfaces — concrete types, specific fields, physical units
+    myPhysIface = addInterface(dict, "MyPhysicalSignal");
+    addElement(myPhysIface, "Voltage", Type="double");   % V
+    addElement(myPhysIface, "Current", Type="double");   % A
+    % ... more interfaces ...
+    dict.save();
+
+    myPhysIface = dict.getInterface("MyPhysicalSignal");
+
+    model = systemcomposer.createModel(modelName);
+    arch  = model.Architecture;
+    linkDictionary(model, strrep(dictFile, '\', '/'));
+
+    compA = addComponent(arch, "ComponentA");
+    addTypedPort(compA.Architecture, "PowerIn", "in", myPhysIface);
+    % ... more components, ports, connections, then profile ...
+
+    Simulink.BlockDiagram.arrangeSystem(modelName);
+    save_system(char(modelName), char(fullfile(archDir, modelName)));
+    open_system(char(modelName));
+end
+```
+
 **Key gotchas:**
-- Use `physModel.InterfaceDictionary` — `systemcomposer.loadDictionary` does not exist
 - `modelName` must be a double-quoted MATLAB string so `char(modelName) + ".slx"` concatenates; single-quoted char + char does arithmetic
-- `addpath(archDir)` before `openModel` — SC resolves models via MATLAB path even with full path
+- `addpath(archDir)` before `createDictionary` and `createModel` — SC resolves files via MATLAB path
+- `Simulink.data.dictionary.closeAll("-discard")` before creating a new dictionary — stale handles from a prior run block `createDictionary`
+- Re-fetch interfaces after `dict.save()` before calling `setInterface` — handles become stale across a save
 
 ---
 

@@ -22,8 +22,8 @@ Phase 1  Stakeholder Needs           SN-SYS-xxx   informal, operational perspect
            |  (derives)
 Phase 2  System Requirements         SR-SYS-xxx   formal shall-statements, testable
            |  (informs)
-Phase 3a Physical Architecture       MySystem.slx  components + interfaces + stereotypes
-Phase 3b Functional Architecture     MyFunctional.slx  logical functions
+Phase 3a Functional Architecture     MyFunctional.slx + FunctionalInterfaces.sldd  logical functions
+Phase 3b Physical Architecture       MySystem.slx + PhysicalInterfaces.sldd  components + stereotypes
            |  (allocated via)
 Phase 4  Functional→Physical         MyAllocation.mldatx  allocation set
            Allocation Set
@@ -43,7 +43,7 @@ Phase 7  Verification                TC requirements + Simulink Test file
 |---|---|---|
 | — | `mbse-new-project` | Guided end-to-end setup for a new project, folder structure, project creation |
 | 1–2 | `simulink-requirements` | Requirements creation, Derive links, shall-statement rules |
-| 3–4, 6 | `mbse-architecture` | Physical + functional models, stereotypes, functional→physical allocation, analysis |
+| 3–4, 6 | `mbse-architecture` | Functional + physical models, two-level interface dictionaries, stereotypes, allocation, analysis |
 | — | `system-composer` | Deep System Composer API reference (ports, connections, profiles) |
 | 5 | `simulink-requirements` | Requirements → component Refine links |
 | 6 | `mbse-architecture` | Quantitative analysis, roll-up, margins |

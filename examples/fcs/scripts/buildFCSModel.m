@@ -27,7 +27,7 @@ function buildFCSModel()
     fcsDir    = fileparts(fileparts(mfilename('fullpath')));
     archDir   = fullfile(fcsDir, 'architecture');
     modelName = "FCSSystem";
-    dictFile  = fullfile(archDir, "FCSInterfaces.sldd");
+    dictFile  = fullfile(archDir, "FCSPhysicalInterfaces.sldd");
 
     %% Interface Dictionary
 

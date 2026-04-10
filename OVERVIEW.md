@@ -80,24 +80,31 @@ The MBSE workflow runs in seven steps. Each step is a separate idempotent build 
   paths, keeping the project portable
 - Artifacts: `StakeholderNeeds.slreqx`, `SystemRequirements.slreqx`
 
-### Step 2 — Physical Architecture + Profile
+### Step 2 — Functional Architecture
+
+- Build a System Composer model for the **logical functions** of the system,
+  independent of physical implementation
+- Create a **functional interface dictionary** (`FunctionalInterfaces.sldd`) with
+  logical, abstract interfaces — semantic field names, no physical units or
+  implementation detail (e.g. `PowerSignal` with a single `Power` element rather
+  than `ElectricalPower` with `Voltage` and `Current`)
+- This script runs independently — no dependency on the physical model
+- `addpath(archDir)` before `createDictionary`; re-fetch interfaces after `dict.save()`
+- Artifacts: `Functional.slx`, `FunctionalInterfaces.sldd`
+
+### Step 3 — Physical Architecture + Profile
 
 - Build a System Composer model with typed components and ports
-- Define interfaces in a shared data dictionary — all elements use `Type="double"`;
-  physical units are documented in comments, not as named types
+- Create a **physical interface dictionary** (`PhysicalInterfaces.sldd`) with
+  implementation-level interfaces — concrete field names, specific types, physical units
+  (e.g. `ElectricalPower` with `Voltage` and `Current` elements)
+- This script also runs independently — no dependency on the functional model
 - At the end of the same script, create a **profile** with a `BudgetProperties`
   stereotype and apply it to all components with initial estimates
 - `profile.save(archDir)` — always pass the folder, never a `.xml` path
   (passing a `.xml` path silently creates a directory instead of a file)
 - Call `open_system(char(modelName))` after `save_system` to show the SC editor
-- Artifacts: `System.slx`, `Interfaces.sldd`, `Profile.xml`
-
-### Step 3 — Functional Architecture
-
-- Build a separate System Composer model for the **logical functions** of the system,
-  independent of physical implementation
-- Share the interface dictionary from the physical model via `physModel.InterfaceDictionary`
-- Artifact: `Functional.slx`
+- Artifacts: `System.slx`, `PhysicalInterfaces.sldd`, `Profile.xml`
 
 ### Step 4 — Functional→Physical Allocation
 

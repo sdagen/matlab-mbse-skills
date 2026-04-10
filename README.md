@@ -83,8 +83,8 @@ Or run steps individually — all scripts are idempotent:
 
 ```
 Step 1  buildFCSRequirements()    StakeholderNeeds.slreqx, SystemRequirements.slreqx
-Step 2  buildFCSModel()           FCSSystem.slx, FCSInterfaces.sldd, FCSBudget.xml
-Step 3  buildFCSFunctional()      FCSFunctional.slx
+Step 2  buildFCSFunctional()      FCSFunctional.slx, FCSFunctionalInterfaces.sldd
+Step 3  buildFCSModel()           FCSSystem.slx, FCSPhysicalInterfaces.sldd, FCSBudget.xml
 Step 4  buildFCSAllocationSet()   FCSAllocation.mldatx
 Step 5  buildFCSAllocation()      Refine links: 13 SRs → 25 component links
 Step 6  rollupAnalysis()          PowerMassRollup.mat (power 408/450 W, mass 33/35 kg)

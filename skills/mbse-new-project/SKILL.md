@@ -204,13 +204,41 @@ Show: requirement counts, derivation link count. Ask the user to confirm counts 
 
 ---
 
-## Phase 2: Physical Architecture
+## Phase 2: Functional Architecture
 
 ### Propose
 
-Based on the SRs, propose:
-- **Components** — typically 4–8 top-level physical components. For each: name, one-sentence role
-- **Interfaces** — data/signal types exchanged between components. For each: name, elements with types
+Based on the SNs (what the system *does*), propose:
+- **Logical functions** — 4–8 functions. For each: name (verb phrase), one-sentence description
+- **Functional interfaces** — abstract information flows between functions. For each: name, semantic fields with types. Keep these at a logical level — no physical units or implementation detail yet
+- **Connections** — data flow between functions
+
+Present as a function list + data flow description. Wait for approval.
+
+Note: functional architecture is independent of physical implementation — functions should reflect operational concepts from the SNs, not implementation decisions.
+
+### Generate
+
+After approval, generate `scripts/buildFunctional.m` using patterns from the `mbse-architecture` skill:
+- Creates the functional interface dictionary (`MyFunctionalInterfaces.sldd`) with logical abstractions
+- Creates the functional SC model, adds function components, typed ports, and connections
+- No dependency on the physical model — this script runs independently
+- `modelName` must be a double-quoted MATLAB string for `char(modelName) + ".slx"` to work
+- Re-fetch interfaces after `dict.save()` before calling `setInterface`
+
+### Checkpoint
+
+Show: function count, interface count, connection count. Ask user to confirm the functional model looks right.
+
+---
+
+## Phase 3: Physical Architecture
+
+### Propose
+
+Based on the functional architecture and SRs, propose:
+- **Components** — typically 4–8 top-level physical components. For each: name, one-sentence role, which function(s) it implements
+- **Physical interfaces** — implementation-level data/signal types. For each: name, concrete fields with types and units. These are more specific than functional interfaces (e.g., `ElectricalPower` with Voltage/Current elements, not an abstract `PowerSignal`)
 - **Connections** — which component ports connect to which
 
 Present as a component list + connection diagram in text. Wait for approval.
@@ -218,9 +246,10 @@ Present as a component list + connection diagram in text. Wait for approval.
 ### Generate
 
 After approval, generate `scripts/buildModel.m` using patterns from the `mbse-architecture` and `system-composer` skills:
-- Creates the interface dictionary (`.sldd`)
+- Creates the physical interface dictionary (`MyPhysicalInterfaces.sldd`) with implementation-level interfaces
 - Creates the SC model, adds components, ports, connections
 - Applies auto-layout and saves
+- No dependency on the functional model — this script runs independently
 
 ### Checkpoint
 
@@ -228,7 +257,7 @@ Show: component count, connection count, any unconnected port warnings. Ask user
 
 ---
 
-## Phase 3: Component Properties
+## Phase 3b: Component Properties
 
 ### Propose
 
@@ -257,33 +286,6 @@ Show: stereotype name(s), property names and estimates per component. Ask user t
 
 ---
 
-## Phase 4: Functional Architecture
-
-### Propose
-
-Based on the SNs (what the system *does*), propose:
-- **Logical functions** — 4–8 functions. For each: name (verb phrase), one-sentence description
-- **Function interfaces** — which interfaces from the dictionary each function uses
-- **Connections** — data flow between functions
-
-Present as a function list + data flow description. Wait for approval.
-
-Note: functional architecture is independent of physical implementation — functions should reflect operational concepts from the SNs, not the physical components from Phase 2.
-
-### Generate
-
-After approval, generate `scripts/buildFunctional.m` using patterns from the `mbse-architecture` skill:
-- Opens the physical model to access the shared interface dictionary via `physModel.InterfaceDictionary`
-- Creates a separate SC model for the functional architecture
-- Adds function components, typed ports, and connections
-- `modelName` must be a double-quoted MATLAB string for `char(modelName) + ".slx"` to work
-
-### Checkpoint
-
-Show: function count, connection count. Ask user to confirm the functional model looks right.
-
----
-
 ## Phase 5: Functional→Physical Allocation
 
 ### Propose
@@ -302,10 +304,11 @@ Wait for approval or corrections.
 
 ### Generate
 
-After approval, generate `scripts/buildAllocationSet.m` using patterns from the `mbse-allocation` skill:
+After approval, generate `scripts/buildAllocationSet.m` using patterns from the `mbse-architecture` skill:
 - `AllocationSet.closeAll()` then delete the `.mldatx` file before recreating
 - `createAllocationSet` name must differ from the file base name (e.g. use `'MyAllocationSet'`, save to `'MyAllocation.mldatx'`) — otherwise `save` fails with "name must be unique"
 - Use `createScenario(allocSet, 'FunctionalToPhysical')` not `getScenario`
+- Both models must be open: `addpath(archDir)` then `openModel` by name for each
 
 ### Checkpoint
 

@@ -6,8 +6,8 @@ function buildFCSAll()
 %
 %   Steps:
 %     1. buildFCSRequirements  — StakeholderNeeds.slreqx, SystemRequirements.slreqx
-%     2. buildFCSModel         — FCSSystem.slx, FCSInterfaces.sldd, FCSBudget.xml
-%     3. buildFCSFunctional    — FCSFunctional.slx
+%     2. buildFCSFunctional    — FCSFunctional.slx, FCSFunctionalInterfaces.sldd
+%     3. buildFCSModel         — FCSSystem.slx, FCSPhysicalInterfaces.sldd, FCSBudget.xml
 %     4. buildFCSAllocationSet — FCSAllocation.mldatx
 %     5. buildFCSAllocation    — Refine links (SR -> components)
 %     6. rollupAnalysis        — PowerMassRollup.mat
@@ -35,8 +35,8 @@ function buildFCSAll()
 
     steps = {
         'buildFCSRequirements',  @buildFCSRequirements;
-        'buildFCSModel',         @buildFCSModel;
         'buildFCSFunctional',    @buildFCSFunctional;
+        'buildFCSModel',         @buildFCSModel;
         'buildFCSAllocationSet', @buildFCSAllocationSet;
         'buildFCSAllocation',    @buildFCSAllocation;
         'rollupAnalysis',        @rollupAnalysis;
@@ -105,9 +105,10 @@ function buildFCSAll()
     fprintf('  requirements/  StakeholderNeeds.slreqx (6)\n');
     fprintf('                 SystemRequirements.slreqx (15)\n');
     fprintf('                 TestCases.slreqx (13)\n');
-    fprintf('  architecture/  FCSSystem.slx\n');
-    fprintf('                 FCSFunctional.slx\n');
-    fprintf('                 FCSInterfaces.sldd\n');
+    fprintf('  architecture/  FCSFunctional.slx\n');
+    fprintf('                 FCSFunctionalInterfaces.sldd\n');
+    fprintf('                 FCSSystem.slx\n');
+    fprintf('                 FCSPhysicalInterfaces.sldd\n');
     fprintf('                 FCSBudget.xml\n');
     fprintf('                 FCSAllocation.mldatx\n');
     fprintf('  analysis/      PowerMassRollup.mat\n');

@@ -1,52 +1,102 @@
 function buildFCSFunctional()
-% buildFCSFunctional  Create the FCS functional architecture model.
+% buildFCSFunctional  Create the FCS functional architecture and its interface dictionary.
 %
 %   Generates:
-%     FCSFunctional.slx  — logical functions of the Flight Control System,
-%                          independent of physical implementation.
+%     FCSFunctionalInterfaces.sldd — logical interface dictionary for the
+%                                    functional architecture
+%     FCSFunctional.slx            — logical functions of the Flight Control
+%                                    System, independent of physical implementation
+%
+%   Functional interfaces (logical abstractions — no implementation detail):
+%     PowerSignal       — abstract power flow: Power (W)
+%     CrewInput         — pilot intent: RollRateCmd, PitchRateCmd, YawRateCmd (deg/s)
+%     AircraftStateData — aircraft state: RollRate, PitchRate, YawRate (deg/s),
+%                         Airspeed (m/s), AltitudeFt (ft), AngleOfAttack (deg)
+%     ControlCommand    — surface demand: Elevator, LeftAileron, RightAileron, Rudder (deg)
+%     ControlFeedback   — surface position: same elements as ControlCommand (deg, measured)
+%     SystemStatus      — health information: StatusWord (double)
 %
 %   Six functions and their roles:
+%     SenseAircraftState     — acquire aircraft state from the environment
+%     ComputeControlLaws     — derive control commands from crew input and state
+%     CommandControlSurfaces — drive control surfaces and report measured positions
+%     DistributePower        — route power to all other functions
+%     ProvideCrewInterface   — acquire and condition pilot inceptor inputs
+%     MonitorSystemHealth    — fault detection and maintenance reporting
 %
-%     SenseAircraftState    — acquire roll/pitch/yaw rates, airspeed,
-%                             altitude, and angle of attack from sensors
-%     ComputeControlLaws    — compute control surface commands from pilot
-%                             inputs and aircraft state; dual-redundant
-%     CommandControlSurfaces— drive actuators to commanded positions and
-%                             report measured surface feedback
-%     DistributePower       — regulate and route electrical power to all
-%                             other functions
-%     ProvideCrewInterface  — acquire and condition pilot inceptor inputs
-%                             (sidestick, rudder pedals, trim)
-%     MonitorSystemHealth   — BITE, fault detection, and maintenance bus
-%
-%   Interfaces are taken from the shared FCSInterfaces.sldd dictionary.
-%   Prerequisite: run buildFCSModel() first (creates the dictionary).
+%   This script runs independently of buildFCSModel. Each architecture maintains
+%   its own interface dictionary at the appropriate abstraction level.
 
     fcsDir    = fileparts(fileparts(mfilename('fullpath')));
     archDir   = fullfile(fcsDir, 'architecture');
     modelName = "FCSFunctional";
-    dictFile  = fullfile(archDir, 'FCSInterfaces.sldd');
+    dictFile  = fullfile(archDir, 'FCSFunctionalInterfaces.sldd');
+    slxFile   = fullfile(archDir, char(modelName) + ".slx");
 
-    %% Open the shared interface dictionary via the physical model
-    addpath(archDir);
-    physModel = systemcomposer.openModel('FCSSystem');
-    dict = physModel.InterfaceDictionary;
-    elecPowerIface   = dict.getInterface('ElectricalPower');
-    pilotCmdIface    = dict.getInterface('PilotCommand');
-    sensorDataIface  = dict.getInterface('SensorData');
-    ctrlSurfCmdIface = dict.getInterface('ControlSurfaceCmd');
-    ctrlSurfFbkIface = dict.getInterface('ControlSurfaceFbk');
-    dataBusMsgIface  = dict.getInterface('DataBusMsg');
+    %% Interface Dictionary
 
-    %% Create model (clean slate each run)
     if bdIsLoaded(modelName), close_system(modelName, 0); end
-    slxFile = fullfile(archDir, char(modelName) + ".slx");
-    if isfile(slxFile), delete(slxFile); end
+    Simulink.data.dictionary.closeAll("-discard");
+    if isfile(dictFile), delete(dictFile); end
+    if isfile(slxFile),  delete(slxFile);  end
+
+    addpath(archDir);
+    dict = systemcomposer.createDictionary(dictFile);
+
+    % PowerSignal — abstract power flow; no Voltage/Current at functional level
+    powerSignalIface = addInterface(dict, "PowerSignal");
+    addElement(powerSignalIface, "Power", Type="double");            % W
+
+    % CrewInput — pilot intent; rate channels are meaningful at functional level
+    crewInputIface = addInterface(dict, "CrewInput");
+    addElement(crewInputIface, "RollRateCmd",  Type="double");       % deg/s
+    addElement(crewInputIface, "PitchRateCmd", Type="double");       % deg/s
+    addElement(crewInputIface, "YawRateCmd",   Type="double");       % deg/s
+
+    % AircraftStateData — full aircraft state vector
+    aircraftStateIface = addInterface(dict, "AircraftStateData");
+    addElement(aircraftStateIface, "RollRate",      Type="double");  % deg/s
+    addElement(aircraftStateIface, "PitchRate",     Type="double");  % deg/s
+    addElement(aircraftStateIface, "YawRate",       Type="double");  % deg/s
+    addElement(aircraftStateIface, "Airspeed",      Type="double");  % m/s
+    addElement(aircraftStateIface, "AltitudeFt",    Type="double");  % ft
+    addElement(aircraftStateIface, "AngleOfAttack", Type="double");  % deg
+
+    % ControlCommand — abstract surface demand
+    controlCmdIface = addInterface(dict, "ControlCommand");
+    addElement(controlCmdIface, "Elevator",     Type="double");      % deg
+    addElement(controlCmdIface, "LeftAileron",  Type="double");      % deg
+    addElement(controlCmdIface, "RightAileron", Type="double");      % deg
+    addElement(controlCmdIface, "Rudder",       Type="double");      % deg
+
+    % ControlFeedback — measured surface positions (same structure as ControlCommand)
+    controlFbkIface = addInterface(dict, "ControlFeedback");
+    addElement(controlFbkIface, "Elevator",     Type="double");      % deg (measured)
+    addElement(controlFbkIface, "LeftAileron",  Type="double");      % deg (measured)
+    addElement(controlFbkIface, "RightAileron", Type="double");      % deg (measured)
+    addElement(controlFbkIface, "Rudder",       Type="double");      % deg (measured)
+
+    % SystemStatus — abstract health and maintenance information
+    systemStatusIface = addInterface(dict, "SystemStatus");
+    addElement(systemStatusIface, "StatusWord", Type="double");      % encoded status
+
+    dict.save();
+
+    % Re-fetch interfaces after save (required before use in setInterface)
+    powerSignalIface   = dict.getInterface("PowerSignal");
+    crewInputIface     = dict.getInterface("CrewInput");
+    aircraftStateIface = dict.getInterface("AircraftStateData");
+    controlCmdIface    = dict.getInterface("ControlCommand");
+    controlFbkIface    = dict.getInterface("ControlFeedback");
+    systemStatusIface  = dict.getInterface("SystemStatus");
+
+    %% Functional Architecture Model
+
     model = systemcomposer.createModel(modelName);
     arch  = model.Architecture;
     linkDictionary(model, strrep(dictFile, '\', '/'));
 
-    %% Functional components
+    %% Functions
 
     senseState     = addComponent(arch, 'SenseAircraftState');
     computeCL      = addComponent(arch, 'ComputeControlLaws');
@@ -57,69 +107,70 @@ function buildFCSFunctional()
 
     %% Ports
 
-    % SenseAircraftState: powered; outputs aircraft state vector
-    addTypedPort(senseState.Architecture, 'ElecPowerIn',    'in',  elecPowerIface);
-    addTypedPort(senseState.Architecture, 'SensorDataOut',  'out', sensorDataIface);
+    % SenseAircraftState: receives power; outputs aircraft state vector
+    addTypedPort(senseState.Architecture, 'PowerIn',          'in',  powerSignalIface);
+    addTypedPort(senseState.Architecture, 'AircraftStateOut', 'out', aircraftStateIface);
 
-    % ComputeControlLaws: powered; processes pilot commands + state;
-    %   outputs surface commands, receives feedback and maintenance messages
-    addTypedPort(computeCL.Architecture, 'ElecPowerIn',      'in',  elecPowerIface);
-    addTypedPort(computeCL.Architecture, 'PilotCmdIn',       'in',  pilotCmdIface);
-    addTypedPort(computeCL.Architecture, 'SensorDataIn',     'in',  sensorDataIface);
-    addTypedPort(computeCL.Architecture, 'CtrlSurfFbkIn',    'in',  ctrlSurfFbkIface);
-    addTypedPort(computeCL.Architecture, 'MaintenanceMsgIn', 'in',  dataBusMsgIface);
-    addTypedPort(computeCL.Architecture, 'CtrlSurfCmdOut',   'out', ctrlSurfCmdIface);
-    addTypedPort(computeCL.Architecture, 'StatusMsgOut',     'out', dataBusMsgIface);
+    % ComputeControlLaws: receives power, crew input, aircraft state, surface feedback,
+    %   and maintenance information; outputs control commands and status
+    addTypedPort(computeCL.Architecture, 'PowerIn',         'in',  powerSignalIface);
+    addTypedPort(computeCL.Architecture, 'CrewInputIn',     'in',  crewInputIface);
+    addTypedPort(computeCL.Architecture, 'AircraftStateIn', 'in',  aircraftStateIface);
+    addTypedPort(computeCL.Architecture, 'ControlFbkIn',    'in',  controlFbkIface);
+    addTypedPort(computeCL.Architecture, 'MaintenanceIn',   'in',  systemStatusIface);
+    addTypedPort(computeCL.Architecture, 'ControlCmdOut',   'out', controlCmdIface);
+    addTypedPort(computeCL.Architecture, 'StatusOut',       'out', systemStatusIface);
 
-    % CommandControlSurfaces: powered; drives actuators and reports positions
-    addTypedPort(commandSurface.Architecture, 'ElecPowerIn',    'in',  elecPowerIface);
-    addTypedPort(commandSurface.Architecture, 'CtrlSurfCmdIn',  'in',  ctrlSurfCmdIface);
-    addTypedPort(commandSurface.Architecture, 'CtrlSurfFbkOut', 'out', ctrlSurfFbkIface);
+    % CommandControlSurfaces: receives power and control commands; outputs surface feedback
+    addTypedPort(commandSurface.Architecture, 'PowerIn',       'in',  powerSignalIface);
+    addTypedPort(commandSurface.Architecture, 'ControlCmdIn',  'in',  controlCmdIface);
+    addTypedPort(commandSurface.Architecture, 'ControlFbkOut', 'out', controlFbkIface);
 
-    % DistributePower: four independent output rails
-    addTypedPort(distPower.Architecture, 'ComputePwrOut',   'out', elecPowerIface);
-    addTypedPort(distPower.Architecture, 'SensePwrOut',     'out', elecPowerIface);
-    addTypedPort(distPower.Architecture, 'SurfacePwrOut',   'out', elecPowerIface);
-    addTypedPort(distPower.Architecture, 'InterfacePwrOut', 'out', elecPowerIface);
+    % DistributePower: one output rail per powered function
+    addTypedPort(distPower.Architecture, 'ComputePowerOut',   'out', powerSignalIface);
+    addTypedPort(distPower.Architecture, 'SensePowerOut',     'out', powerSignalIface);
+    addTypedPort(distPower.Architecture, 'ActuatorPowerOut',  'out', powerSignalIface);
+    addTypedPort(distPower.Architecture, 'InterfacePowerOut', 'out', powerSignalIface);
 
-    % ProvideCrewInterface: powered; captures and conditions inceptor inputs
-    addTypedPort(crewInterface.Architecture, 'ElecPowerIn', 'in',  elecPowerIface);
-    addTypedPort(crewInterface.Architecture, 'PilotCmdOut', 'out', pilotCmdIface);
+    % ProvideCrewInterface: receives power; outputs conditioned crew input
+    addTypedPort(crewInterface.Architecture, 'PowerIn',      'in',  powerSignalIface);
+    addTypedPort(crewInterface.Architecture, 'CrewInputOut', 'out', crewInputIface);
 
-    % MonitorSystemHealth: receives status; outputs maintenance messages
-    addTypedPort(monitorHealth.Architecture, 'StatusMsgIn',       'in',  dataBusMsgIface);
-    addTypedPort(monitorHealth.Architecture, 'MaintenanceMsgOut', 'out', dataBusMsgIface);
+    % MonitorSystemHealth: receives status; outputs maintenance information
+    addTypedPort(monitorHealth.Architecture, 'StatusIn',      'in',  systemStatusIface);
+    addTypedPort(monitorHealth.Architecture, 'MaintenanceOut','out', systemStatusIface);
 
     %% Connections
 
-    % Power rails to each function
-    connect(distPower.getPort('ComputePwrOut'),   computeCL.getPort('ElecPowerIn'));
-    connect(distPower.getPort('SensePwrOut'),     senseState.getPort('ElecPowerIn'));
-    connect(distPower.getPort('SurfacePwrOut'),   commandSurface.getPort('ElecPowerIn'));
-    connect(distPower.getPort('InterfacePwrOut'), crewInterface.getPort('ElecPowerIn'));
+    % Power distribution
+    connect(distPower.getPort('ComputePowerOut'),   computeCL.getPort('PowerIn'));
+    connect(distPower.getPort('SensePowerOut'),     senseState.getPort('PowerIn'));
+    connect(distPower.getPort('ActuatorPowerOut'),  commandSurface.getPort('PowerIn'));
+    connect(distPower.getPort('InterfacePowerOut'), crewInterface.getPort('PowerIn'));
 
     % Primary control loop
-    connect(crewInterface.getPort('PilotCmdOut'),      computeCL.getPort('PilotCmdIn'));
-    connect(senseState.getPort('SensorDataOut'),       computeCL.getPort('SensorDataIn'));
-    connect(computeCL.getPort('CtrlSurfCmdOut'),       commandSurface.getPort('CtrlSurfCmdIn'));
-    connect(commandSurface.getPort('CtrlSurfFbkOut'),  computeCL.getPort('CtrlSurfFbkIn'));
+    connect(crewInterface.getPort('CrewInputOut'),   computeCL.getPort('CrewInputIn'));
+    connect(senseState.getPort('AircraftStateOut'),  computeCL.getPort('AircraftStateIn'));
+    connect(computeCL.getPort('ControlCmdOut'),      commandSurface.getPort('ControlCmdIn'));
+    connect(commandSurface.getPort('ControlFbkOut'), computeCL.getPort('ControlFbkIn'));
 
     % Health monitoring loop
-    connect(computeCL.getPort('StatusMsgOut'),          monitorHealth.getPort('StatusMsgIn'));
-    connect(monitorHealth.getPort('MaintenanceMsgOut'), computeCL.getPort('MaintenanceMsgIn'));
+    connect(computeCL.getPort('StatusOut'),        monitorHealth.getPort('StatusIn'));
+    connect(monitorHealth.getPort('MaintenanceOut'), computeCL.getPort('MaintenanceIn'));
 
     %% Save and open
     Simulink.BlockDiagram.arrangeSystem(modelName);
-    slxPath = fullfile(archDir, modelName);
-    save_system(char(modelName), char(slxPath));
-    open_system(char(modelName));   % show the System Composer editor
+    save_system(char(modelName), char(fullfile(archDir, modelName)));
+    open_system(char(modelName));
 
     fprintf('FCS functional model created: %s\n', modelName);
+    fprintf('Interfaces (logical): PowerSignal, CrewInput, AircraftStateData,\n');
+    fprintf('                      ControlCommand, ControlFeedback, SystemStatus\n');
     fprintf('Functions: SenseAircraftState, ComputeControlLaws, CommandControlSurfaces,\n');
     fprintf('           DistributePower, ProvideCrewInterface, MonitorSystemHealth\n');
 
     %% Register with project
-    registerWithProject({slxFile});
+    registerWithProject({dictFile, slxFile});
 end
 
 % ── Helper ───────────────────────────────────────────────────────────────────

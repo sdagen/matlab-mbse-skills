@@ -25,7 +25,7 @@ function buildFCSAllocationSet()
 %   detection runs on the FlightComputer (DO-178C BITE) while the
 %   maintenance interface is provided by the DataBus (ARINC 604).
 %
-%   Prerequisites: run buildFCSFunctional() (and thus buildFCSModel()) first.
+%   Prerequisites: run buildFCSFunctional() and buildFCSModel() first.
 
     fcsDir   = fileparts(fileparts(mfilename('fullpath')));
     archDir  = fullfile(fcsDir, 'architecture');
