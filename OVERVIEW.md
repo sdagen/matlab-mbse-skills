@@ -91,8 +91,10 @@ The MBSE workflow runs in seven steps. Each step is a separate idempotent build 
 - Build a System Composer model with typed components and ports
 - Create a **physical interface dictionary** with implementation-level interfaces —
   concrete field names, specific types, and physical units
-- Define a **profile** with a `BudgetProperties` stereotype and apply it to all
-  components with initial property estimates (mass, power, cost, etc.)
+- Define a **profile** with a component properties stereotype capturing the
+  engineering attributes relevant to your project — mass, power, cost, reliability,
+  latency, or whatever drives design decisions — and apply it to all components
+  with initial estimates
 - Artifacts: `System.slx`, `PhysicalInterfaces.sldd`, `Profile.xml`
 
 ### Step 4 — Functional→Physical Allocation
@@ -203,7 +205,7 @@ examples/fcs/
 │   ├── FCSFunctionalInterfaces.sldd    6 logical interfaces (abstract flows)
 │   ├── FCSSystem.slx                   Physical model: 6 components, 10 connections
 │   ├── FCSPhysicalInterfaces.sldd      6 typed interfaces (concrete, physical units)
-│   ├── FCSBudget.xml                   BudgetProperties stereotype profile
+│   ├── FCSBudget.xml                   Component profile (FCS tracks power + mass budgets)
 │   └── FCSAllocation.mldatx            Functional→physical allocation set
 ├── analysis/
 │   └── PowerMassRollup.mat         Analysis instance for Analysis Viewer

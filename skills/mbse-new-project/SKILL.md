@@ -261,7 +261,7 @@ Show: component count, connection count, any unconnected port warnings. Ask user
 
 Based on the engineering concerns identified in Phase 0, propose one or more stereotypes:
 
-- **Stereotype name** — e.g. `MassProperties`, `PowerProperties`, `PerformanceProperties`
+- **Stereotype name** — name it after what you are characterizing, not the analysis activity. e.g. `FlightProperties`, `HardwareProperties`, `ComponentCharacteristics`. Avoid names like `BudgetProperties` — a stereotype often carries mass, power, reliability, and latency together, so a budget-specific name is too narrow.
 - **Properties** — for each: name, type (double/string/enum), unit, what it represents
 - **Which components** each stereotype applies to (usually all, but not always)
 - **Initial estimates** — propose plausible starting values per component; user should correct these
