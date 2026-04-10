@@ -22,6 +22,48 @@ skill manages the conversation flow and script generation.
 
 ---
 
+## Recommended Folder Structure
+
+```
+my-system/
+├── my-system.prj          MATLAB Project file (manages path automatically)
+├── requirements/          .slreqx files (StakeholderNeeds, SystemRequirements, TestCases)
+├── architecture/          .slx, .sldd, .xml, .mldatx (model, dictionary, profile, allocation)
+├── analysis/              .mat (analysis instances)
+├── verification/          .mldatx (Simulink Test file, if Phase 9 runs)
+├── scripts/               buildAll.m and all phase build scripts
+└── derived/               build outputs — NOT tracked in the project
+    ├── cache/
+    └── codegen/
+```
+
+---
+
+## Cross-Phase Dependencies
+
+- **Architecture rebuilds break allocation links.** `slreq.createLink` stores
+  component references by Simulink SID. If you rebuild the model, SIDs change
+  and Refine allocation links become stale. Always rebuild allocation after
+  rebuilding the architecture model.
+
+- **Profile setup belongs in the architecture script.** Create and apply the
+  stereotype profile at the end of `buildModel()` so estimates travel with the
+  model and survive every rebuild.
+
+- **`slreq.saveAll()` saves cross-set links.** Call it after any session that
+  creates links between different `.slreqx` files or between requirements and
+  architecture artifacts.
+
+- **`slreq.clear()` unloads all sets from memory** but does not delete files.
+  Call it at the top of each script for a clean slate, then `slreq.load()` the
+  files you need.
+
+- **Delete `.slmx` link files alongside `.slreqx` files** when rebuilding
+  requirement sets. Stale `.slmx` files store cross-artifact links and will
+  auto-open old model files on load, causing conflicts.
+
+---
+
 ## How to conduct this session
 
 Work through the phases in order. Never jump ahead. At each checkpoint, present

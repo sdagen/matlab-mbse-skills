@@ -244,80 +244,10 @@ systemcomposer.allocation.editor('path/to/MyAllocation.mldatx')
 
 ## Phase 5: Requirements → Component Refine Links
 
-```matlab
-rootDir = fileparts(fileparts(mfilename('fullpath')));
-reqDir  = fullfile(rootDir, 'requirements');
-archDir = fullfile(rootDir, 'architecture');
-
-slreq.clear();
-srSet = slreq.open(fullfile(reqDir, 'SystemRequirements.slreqx'));
-addpath(archDir);
-model = systemcomposer.openModel('MySystem');   % by name — never full path with ..
-arch  = model.Architecture;
-
-% Remove existing Refine links (idempotent)
-allReqs = srSet.find();
-for i = 1:numel(allReqs)
-    lnks = slreq.outLinks(allReqs(i));
-    for j = 1:numel(lnks)
-        if strcmp(lnks(j).Type, 'Refine'), lnks(j).remove(); end
-    end
-end
-
-% { SR-ID, { component names... } }
-allocation = {
-    'SR-SYS-001', { 'ComponentA', 'ComponentB' };
-    'SR-SYS-002', { 'ComponentA'               };
-};
-
-for i = 1:size(allocation, 1)
-    req = srSet.find('Id', allocation{i, 1});
-    for j = 1:numel(allocation{i, 2})
-        comp     = arch.getComponent(allocation{i, 2}{j});
-        lnk      = slreq.createLink(req, comp);
-        lnk.Type = 'Refine';
-    end
-end
-slreq.saveAll();
-```
-
-### Bidirectional navigation
-
-```matlab
-% Forward: requirement → components
-outL = slreq.outLinks(req);
-for i = 1:numel(outL)
-    if strcmp(outL(i).Type, 'Refine')
-        h = Simulink.ID.getHandle([strrep(outL(i).destination.artifact, '.slx', ''), ...
-                                    outL(i).destination.id]);
-        fprintf('%s\n', get_param(h, 'Name'));
-    end
-end
-
-% Reverse: component → requirements
-inL = slreq.inLinks(comp);
-for i = 1:numel(inL)
-    rs  = slreq.open(inL(i).source.artifact);
-    all = rs.find();
-    for k = 1:numel(all)
-        if all(k).SID == str2double(inL(i).source.id)
-            fprintf('%s\n', all(k).Id); break;
-        end
-    end
-end
-```
-
-### Path rule
-
-Never use `'..'` in paths passed to System Composer. Use `fileparts` twice to
-get the project root:
-
-```matlab
-rootDir = fileparts(fileparts(mfilename('fullpath')));  % project root
-archDir = fullfile(rootDir, 'architecture');
-addpath(archDir);
-model = systemcomposer.openModel('MySystem');  % open by name
-```
+Requirements allocation (mapping SRs to the physical components responsible for
+satisfying them) uses `slreq.createLink` with `lnk.Type = 'Refine'`. This is a
+requirements toolbox operation — see the `simulink-requirements` skill for the
+full script pattern and API details.
 
 ---
 
