@@ -319,10 +319,52 @@ systemcomposer.allocation.editor('path/to/MyAllocation.mldatx')
 
 ## Phase 5: Requirements → Component Refine Links
 
-Requirements allocation (mapping SRs to the physical components responsible for
-satisfying them) uses `slreq.createLink` with `lnk.Type = 'Refine'`. This is a
-requirements toolbox operation — see the `simulink-requirements` skill for the
-full script pattern and API details.
+`Refine` links map system requirements to the physical architecture components
+responsible for satisfying them. This is distinct from the functional→physical
+allocation set (Phase 4, `systemcomposer.allocation`) — Refine links live in the
+requirements toolbox and are queryable via `slreq`.
+
+```matlab
+function buildAllocation()
+    rootDir = fileparts(fileparts(mfilename('fullpath')));
+    reqDir  = fullfile(rootDir, 'requirements');
+    archDir = fullfile(rootDir, 'architecture');
+
+    slreq.clear();
+    srSet = slreq.load(fullfile(reqDir, 'SystemRequirements.slreqx'));
+    addpath(archDir);
+    model = systemcomposer.openModel('MySystem');   % open by name — never use '..' in SC paths
+    arch  = model.Architecture;
+
+    % Remove existing Refine links (idempotent)
+    allReqs = srSet.find('Type', 'Requirement');
+    for i = 1:numel(allReqs)
+        lnks = allReqs(i).outLinks();   % method on the object — NOT slreq.outLinks(req)
+        for j = 1:numel(lnks)
+            if strcmp(lnks(j).Type, 'Refine'), lnks(j).remove(); end
+        end
+    end
+
+    % { SR-ID, { component names... } }
+    allocation = {
+        'SR-SYS-001', { 'ComponentA', 'ComponentB' };
+        'SR-SYS-002', { 'ComponentA'               };
+    };
+
+    for i = 1:size(allocation, 1)
+        req = srSet.find('Id', allocation{i, 1});
+        for j = 1:numel(allocation{i, 2})
+            comp     = arch.getComponent(allocation{i, 2}{j});
+            lnk      = slreq.createLink(req, comp);
+            lnk.Type = 'Refine';
+        end
+    end
+    slreq.saveAll();
+end
+```
+
+Never use `'..'` in paths passed to System Composer — use `fileparts` twice to get the
+project root, then `addpath` before opening the model by name (shown above).
 
 ---
 
