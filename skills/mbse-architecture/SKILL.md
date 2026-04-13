@@ -20,29 +20,25 @@ For analysis details see `references/analysis.md` in this skill folder.
 
 ---
 
-## Functional vs Physical Decomposition
+## Three-Model Architecture (RFLPV)
 
-Before writing any code, decide whether you need one or two SC models:
+The MBSE workflow uses three separate System Composer models, one per layer:
 
-- **Single model (simple systems)** — physical components only
-- **Two models (recommended for ARP4754A compliance)** — separate functional and
-  physical models linked by a System Composer allocation set
+| Model | Layer | Answers | Interface style |
+|---|---|---|---|
+| `MyFunctional.slx` | F — Functions | What does the system *do*? | Abstract flows, solution-neutral |
+| `MyLogical.slx` | L — Logical | What *kind* of element solves it? | Typed signals, design-agnostic |
+| `MySystem.slx` | P — Physical | *How* is it built? | Concrete fields, physical units |
 
-Two separate models is the standard MBSE approach. **Functional architecture is
-designed first** — it captures *what* the system does as logical functions with
-abstract interfaces, independent of any physical realization. **Physical
-architecture is designed second** — it captures *how* the system is implemented
-in terms of hardware/software components with concrete physical interfaces.
+Each model has its own interface dictionary at the appropriate abstraction level.
+All three dictionaries are independent — no model script depends on another being open.
 
-Each model has its own interface dictionary at the appropriate abstraction level:
+**Build order: Functional first, Logical second, Physical third.**
 
-| Dictionary | Abstraction level | Interface style |
-|---|---|---|
-| `MyFunctionalInterfaces.sldd` | Logical | Abstract flows — semantic names, minimal elements |
-| `MyPhysicalInterfaces.sldd` | Implementation | Concrete types — specific fields, physical units |
-
-The two dictionaries are independent. Neither model script depends on the other
-being open.
+The Logical layer is the key distinction from classic RFLP. Logical components are
+design-agnostic solution principles (e.g., `SensingUnit`, `ControlUnit`, `ActuationUnit`)
+— they commit to *what kind* of element is needed without specifying vendor, geometry,
+or implementation. Physical components are the actual realization.
 
 ---
 
@@ -59,7 +55,29 @@ buildMyFunctional(modelName, dictFile, archDir)
 
 ---
 
-### Physical architecture model (`MySystem.slx`) — build second
+### Logical architecture model (`MyLogical.slx`) — build second
+
+What kind of element solves each function — solution principles without physical
+commitment. Creates and owns the logical interface dictionary.
+
+See [`code/buildMyLogical.m`](code/buildMyLogical.m) for the full parameterized function:
+
+```
+buildMyLogical(modelName, dictFile, archDir)
+```
+
+**Naming guidance for logical components:** Use nouns that describe the *role* of the
+solution element, not the specific hardware. Good: `SensingUnit`, `ControlUnit`,
+`ActuationUnit`, `PowerConverter`. Avoid hardware brand names or part numbers — those
+belong in the Physical layer.
+
+**Interface guidance:** Logical interfaces sit between functional (abstract flows) and
+physical (hardware-spec signals). Include typed fields with semantic meaning but without
+datasheet-level specifics — no voltage ranges, baud rates, or tolerance values.
+
+---
+
+### Physical architecture model (`MySystem.slx`) — build third
 
 What the system *implements* — hardware/software components, physical interfaces,
 and stereotype properties. Creates and owns the physical interface dictionary.
@@ -193,25 +211,38 @@ scripts after rebuilding the architecture.
 
 ---
 
-# Allocation (Phases 4–5)
+# Allocation (Phases 6–8)
 
-Two distinct allocation steps:
+Three distinct allocation steps:
 
 | Phase | What | API |
 |---|---|---|
-| 4 | Functional → Physical allocation set | `systemcomposer.allocation` |
-| 5 | Requirements → Component Refine links | `slreq.createLink` |
+| 6 | Functional → Logical allocation set | `systemcomposer.allocation` |
+| 7 | Logical → Physical allocation set | `systemcomposer.allocation` |
+| 8 | Requirements → Component Refine links | `slreq.createLink` |
 
 ---
 
-## Phase 4: Functional-to-Physical Allocation Set
+## Phase 6: Functional-to-Logical Allocation Set
 
-See [`code/buildAllocationSet.m`](code/buildAllocationSet.m) for the full parameterized function.
-The allocation set name is derived automatically by appending `'Set'` to the file base name,
-ensuring it differs from the file name (required to avoid a "name must be unique" save error):
+Maps each logical function to the logical element(s) that realize it.
+
+See [`code/buildAllocationSet.m`](code/buildAllocationSet.m). The allocation set name is
+derived automatically by appending `'Set'` to the file base name:
 
 ```
-buildAllocationSet(allocFile, funcModelName, physModelName, archDir)
+buildAllocationSet(allocFile, funcModelName, logicalModelName, archDir)
+```
+
+---
+
+## Phase 7: Logical-to-Physical Allocation Set
+
+Maps each logical element to the physical component(s) that implement it.
+Uses the same function — just pass the logical and physical model names:
+
+```
+buildAllocationSet(allocFile, logicalModelName, physModelName, archDir)
 ```
 
 ### Query allocations
@@ -229,12 +260,13 @@ systemcomposer.allocation.editor('path/to/MyAllocation.mldatx')
 
 ---
 
-## Phase 5: Requirements → Component Refine Links
+## Phase 8: Requirements → Component Refine Links
 
-`Refine` links map system requirements to the physical architecture components
-responsible for satisfying them. This is distinct from the functional→physical
-allocation set (Phase 4, `systemcomposer.allocation`) — Refine links live in the
-requirements toolbox and are queryable via `slreq`.
+`Refine` links map system requirements to the architecture components responsible
+for satisfying them. Links can target Logical components, Physical components, or
+both — place them at whichever layer the requirement is most naturally allocated.
+This is distinct from the allocation sets (Phases 6–7, `systemcomposer.allocation`)
+— Refine links live in the requirements toolbox and are queryable via `slreq`.
 
 See [`code/buildAllocation.m`](code/buildAllocation.m) for the full parameterized function:
 

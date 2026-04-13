@@ -179,24 +179,61 @@ Show: function count, interface count, connection count. Ask user to confirm the
 
 ---
 
-## Phase 3: Physical Architecture
+## Phase 3: Logical Architecture
 
 ### Propose
 
-Based on the functional architecture and SRs, propose:
-- **Components** — typically 4–8 top-level physical components. For each: name, one-sentence role, which function(s) it implements
-- **Physical interfaces** — implementation-level data/signal types. For each: name, concrete fields with types and units. These are more specific than functional interfaces (e.g., `ElectricalPower` with Voltage/Current elements, not an abstract `PowerSignal`)
+Based on the functional architecture, propose logical elements — design-agnostic solution
+principles that answer "what *kind* of element solves this function?" without committing
+to specific hardware or software:
+
+- **Logical components** — typically 4–8. For each: name (noun describing the solution role,
+  e.g. `SensingUnit`, `ControlUnit`, `ActuationUnit`), one-sentence role, which function(s)
+  it realizes. Avoid hardware brand names or part numbers — those belong in Phase 4.
+- **Logical interfaces** — intermediate-level signal types: typed fields with semantic meaning,
+  but no datasheet-level specifics (no voltage ranges, baud rates, or tolerance values)
+- **Connections** — signal flows between logical components
+
+Present as a component list. Make clear to the user that this layer sits between
+*what the system does* (Phase 2) and *how it is built* (Phase 4).
+
+### Generate
+
+After approval, generate `scripts/buildLogical.m` using patterns from the `mbse-architecture` skill:
+- Creates the logical interface dictionary (`MyLogicalInterfaces.sldd`)
+- Creates the logical SC model, adds logical components, typed ports, and connections
+- No dependency on functional or physical model — runs independently
+- `modelName` must be a double-quoted MATLAB string for `char(modelName) + ".slx"` to work
+- Re-fetch interfaces after `dict.save()` before calling `setInterface`
+
+### Checkpoint
+
+Show: logical component count, interface count, connection count. Ask user to confirm the
+logical model represents the right solution principles before moving to physical.
+
+---
+
+## Phase 4: Physical Architecture
+
+### Propose
+
+Based on the logical architecture and SRs, propose:
+- **Components** — typically 4–8 top-level physical components. For each: name, one-sentence
+  role, which logical element(s) it implements
+- **Physical interfaces** — implementation-level data/signal types with concrete fields,
+  types, and units (e.g., `ElectricalPower` with Voltage/Current elements)
 - **Connections** — which component ports connect to which
 
 Present as a component list + connection diagram in text. Wait for approval.
 
 ### Generate
 
-After approval, generate `scripts/buildModel.m` using patterns from the `mbse-architecture` and `system-composer` skills:
+After approval, generate `scripts/buildModel.m` using patterns from the `mbse-architecture`
+and `system-composer` skills:
 - Creates the physical interface dictionary (`MyPhysicalInterfaces.sldd`) with implementation-level interfaces
 - Creates the SC model, adds components, ports, connections
 - Applies auto-layout and saves
-- No dependency on the functional model — this script runs independently
+- No dependency on the logical or functional model — this script runs independently
 
 ### Checkpoint
 
@@ -204,7 +241,7 @@ Show: component count, connection count, any unconnected port warnings. Ask user
 
 ---
 
-## Phase 3b: Component Properties
+## Phase 4b: Component Properties
 
 ### Propose
 
@@ -233,47 +270,78 @@ Show: stereotype name(s), property names and estimates per component. Ask user t
 
 ---
 
-## Phase 5: Functional→Physical Allocation
+## Phase 5: F→L Allocation Set
 
 ### Propose
 
-Map each logical function to the physical component(s) that implement it. Functions may map to multiple components. Present as a two-column table:
+Map each logical function to the logical element(s) that realize it. Present as a two-column table:
 
 ```
-Function                    Physical Component(s)
-────────────────────────────────────────────────
-FunctionA               →   ComponentX
-FunctionB               →   ComponentY
-FunctionC               →   ComponentX, ComponentZ
+Function                    Logical Element(s)
+───────────────────────────────────────────────
+FunctionA               →   SensingUnit
+FunctionB               →   ControlUnit
+FunctionC               →   ControlUnit, ActuationUnit
 ```
 
 Wait for approval or corrections.
 
 ### Generate
 
-After approval, generate `scripts/buildAllocationSet.m` using patterns from the `mbse-architecture` skill:
+After approval, generate `scripts/buildFunctionalToLogical.m` using patterns from the
+`mbse-architecture` skill:
 - `AllocationSet.closeAll()` then delete the `.mldatx` file before recreating
-- `createAllocationSet` name must differ from the file base name (e.g. use `'MyAllocationSet'`, save to `'MyAllocation.mldatx'`) — otherwise `save` fails with "name must be unique"
-- Use `createScenario(allocSet, 'FunctionalToPhysical')` not `getScenario`
+- `createAllocationSet` name must differ from the file base name — append `'Set'` to avoid the "name must be unique" save error
+- Use `createScenario(allocSet, 'FunctionalToLogical')`
 - Both models must be open: `addpath(archDir)` then `openModel` by name for each
 
 ### Checkpoint
 
-Show the allocation table printed from the script. Ask user to confirm mappings are correct.
+Show the F→L allocation table. Ask user to confirm every function is covered.
 
 ---
 
-## Phase 6: Requirements Allocation
+## Phase 6: L→P Allocation Set
 
 ### Propose
 
-Map each SR to the physical component(s) responsible for satisfying it. Present as a table. One SR may map to multiple components; one component typically owns multiple SRs.
+Map each logical element to the physical component(s) that implement it. Present as a two-column table:
+
+```
+Logical Element             Physical Component(s)
+─────────────────────────────────────────────────
+SensingUnit             →   ComponentX
+ControlUnit             →   ComponentY
+ActuationUnit           →   ComponentX, ComponentZ
+```
+
+Wait for approval or corrections.
+
+### Generate
+
+After approval, generate `scripts/buildLogicalToPhysical.m` — same pattern as Phase 5
+but with the logical and physical models as source and destination:
+- Use `createScenario(allocSet, 'LogicalToPhysical')`
+
+### Checkpoint
+
+Show the L→P allocation table. Ask user to confirm every logical element maps to at least one physical component.
+
+---
+
+## Phase 7: Requirements Allocation
+
+### Propose
+
+Map each SR to the component(s) responsible for satisfying it — either Logical or Physical,
+wherever the requirement is most naturally owned. Present as a table. One SR may map to
+multiple components; one component typically owns multiple SRs.
 
 Wait for approval.
 
 ### Generate
 
-After approval, generate `scripts/buildAllocation.m` using patterns from the `mbse-allocation` skill:
+After approval, generate `scripts/buildAllocation.m` using patterns from the `mbse-architecture` skill:
 - Remove existing Refine links before recreating (idempotent)
 - Use `fileparts(fileparts(mfilename('fullpath')))` for the project root — never `'..'` in paths passed to System Composer
 - `addpath(archDir)` then `openModel` by model name, not full path
@@ -285,7 +353,7 @@ Show: total Refine link count, per-component requirement count, any SRs with no 
 
 ---
 
-## Phase 7: Analysis (Optional)
+## Phase 8: Analysis (Optional)
 
 If the user indicated no analysis is needed in Phase 0, skip this phase entirely.
 
@@ -308,7 +376,7 @@ Show the analysis report output. Flag any margins that are negative (over budget
 
 ---
 
-## Phase 8: Test Cases
+## Phase 9: Test Cases
 
 ### Propose
 
@@ -333,21 +401,21 @@ Show: TC count, verification coverage report (SR IDs vs TC IDs). Flag any SRs wi
 
 ---
 
-## Phase 9: Simulink Tests and Final Summary
+## Phase 10: Simulink Tests and Final Summary
 
 ### Two tiers of verification — be explicit about the distinction
 
-**Tier 1 — TC requirements (Phase 8, always done):** `TestCases.slreqx` contains
+**Tier 1 — TC requirements (Phase 9, always done):** `TestCases.slreqx` contains
 testable shall-statements with Verify links to SRs. These are valid artifacts on
 their own and provide full requirements traceability regardless of whether a
 simulation model exists.
 
-**Tier 2 — Simulink Test file (Phase 9, only if a simulation model exists):**
+**Tier 2 — Simulink Test file (Phase 10, only if a simulation model exists):**
 `buildSimulinkTests.m` creates an `.mldatx` file that links test cases to a
 Simulink model under test. **This only makes sense when the user has an actual
 Simulink model to simulate.** Without a model, the test cases are empty stubs —
 they have names and descriptions but cannot run and provide no additional value
-over the TC requirements already in Phase 8.
+over the TC requirements already in Phase 9.
 
 Before generating `buildSimulinkTests.m`, confirm with the user:
 > "Do you have a Simulink simulation model to test against, or is this project
@@ -364,7 +432,7 @@ Before generating `buildSimulinkTests.m`, confirm with the user:
 ### Generate buildAll.m
 
 Generate `scripts/buildAll.m` that calls all phase scripts in order with timing
-output. Omit `buildSimulinkTests` if Phase 9 was skipped. This is the single
+output. Omit `buildSimulinkTests` if Phase 10 was skipped. This is the single
 entry point for a clean rebuild from scratch.
 
 After all steps complete, `buildAll.m` must:
@@ -377,7 +445,13 @@ scriptsDir = fileparts(mfilename('fullpath'));
 scriptFiles = { ...
     fullfile(scriptsDir, 'buildAll.m'), ...
     fullfile(scriptsDir, 'buildRequirements.m'), ...
-    % ... all other scripts ...
+    fullfile(scriptsDir, 'buildFunctional.m'), ...
+    fullfile(scriptsDir, 'buildLogical.m'), ...
+    fullfile(scriptsDir, 'buildModel.m'), ...
+    fullfile(scriptsDir, 'buildFunctionalToLogical.m'), ...
+    fullfile(scriptsDir, 'buildLogicalToPhysical.m'), ...
+    fullfile(scriptsDir, 'buildAllocation.m'), ...
+    % ... runAnalysis.m, buildTestCases.m, buildSimulinkTests.m if applicable ...
     fullfile(scriptsDir, 'registerWithProject.m'), ...
 };
 registerWithProject(scriptFiles);
@@ -420,38 +494,48 @@ Present a complete artifact inventory:
 ```
 Project: <Name>  (<root folder>)
 ├── requirements/
-│   ├── StakeholderNeeds.slreqx    (N items)
-│   ├── SystemRequirements.slreqx  (N items)
-│   └── TestCases.slreqx           (N items)
+│   ├── StakeholderNeeds.slreqx        (N items)
+│   ├── SystemRequirements.slreqx      (N items)
+│   └── TestCases.slreqx               (N items)
 ├── architecture/
-│   ├── <Name>System.slx           (physical model)
-│   ├── <Name>Functional.slx       (functional model)
-│   ├── <Name>Interfaces.sldd      (interface dictionary)
-│   ├── <Name>Profile.xml          (stereotype profile)
-│   └── <Name>Allocation.mldatx    (functional→physical allocation)
+│   ├── <Name>Functional.slx           (functional model — Phase 2)
+│   ├── <Name>FunctionalInterfaces.sldd
+│   ├── <Name>Logical.slx              (logical model — Phase 3)
+│   ├── <Name>LogicalInterfaces.sldd
+│   ├── <Name>System.slx               (physical model — Phase 4)
+│   ├── <Name>PhysicalInterfaces.sldd
+│   ├── <Name>Profile.xml              (stereotype profile — Phase 4b)
+│   ├── <Name>FunctionalToLogical.mldatx  (F→L allocation — Phase 5)
+│   └── <Name>LogicalToPhysical.mldatx    (L→P allocation — Phase 6)
 ├── analysis/
-│   └── <analysis>.mat             (analysis instance, if Phase 7 ran)
+│   └── <analysis>.mat                 (analysis instance, if Phase 8 ran)
 ├── verification/
-│   └── <Name>Tests.mldatx         (if Phase 9 ran — requires simulation model)
+│   └── <Name>Tests.mldatx             (if Phase 10 ran — requires simulation model)
 └── scripts/
-    ├── buildAll.m                  (run this to rebuild everything)
+    ├── buildAll.m                      (run this to rebuild everything)
     ├── buildRequirements.m
-    ├── buildModel.m
     ├── buildFunctional.m
-    ├── buildAllocationSet.m
+    ├── buildLogical.m
+    ├── buildModel.m
+    ├── buildFunctionalToLogical.m
+    ├── buildLogicalToPhysical.m
     ├── buildAllocation.m
-    ├── runAnalysis.m               (if Phase 7 ran)
+    ├── runAnalysis.m                   (if Phase 8 ran)
     ├── buildTestCases.m
-    └── buildSimulinkTests.m        (if Phase 9 ran)
+    └── buildSimulinkTests.m            (if Phase 10 ran)
 
 Traceability:
-  SN ─[Derive]─▶ SR ─[Refine]─▶ Component
-                              ▲
-                          [Allocate]
-                              │
-                         LogicalFunction
+  SN ─[Derive]─▶ SR ─[Refine]─▶ LogicalComponent  (or PhysicalComponent)
+                                        ▲
+                                    [L→P Allocate]
+                                        │
+                                  LogicalElement
+                                        ▲
+                                    [F→L Allocate]
+                                        │
+                                   Function
   SR ─[Verify]─▶ TC requirement
-                     └─[Verify]─▶ Simulink Test Case  (Phase 9 only)
+                     └─[Verify]─▶ Simulink Test Case  (Phase 10 only)
 ```
 
 Remind the user they can rebuild everything cleanly at any time with `buildAll()`.
