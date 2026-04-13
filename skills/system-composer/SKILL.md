@@ -38,108 +38,20 @@ The script is idempotent: it deletes and recreates all artifacts on every run.
 
 ### Skeleton
 
-```matlab
-function buildMySystemModel()
-    modelName = "MySystem";
-    dictFile  = "MySystemInterfaces.sldd";
+See [`code/buildMySystemModel.m`](code/buildMySystemModel.m) for the full parameterized function:
 
-    %% Interface Dictionary
-    if isfile(dictFile)
-        Simulink.data.dictionary.closeAll("-discard");
-        delete(dictFile);
-    end
-    dict = systemcomposer.createDictionary(dictFile);
-
-    % Interfaces — use Type="double" for all elements; document units in comments.
-    % Do NOT use addValueType to create named types for physical quantities like
-    % Temperature or Voltage — addValueType creates Simulink.ValueType objects that
-    % the bus compiler cannot resolve, causing "update diagram" to fail.
-    thermalIface = addInterface(dict, "ThermalFluid");
-    addElement(thermalIface, "Temperature", Type="double");   % K
-    addElement(thermalIface, "MassFlowRate", Type="double");  % kg/s
-    % ... more interfaces ...
-
-    % CRITICAL: save dictionary before creating model, then re-fetch interfaces
-    dict.save();
-    thermalIface = dict.getInterface("ThermalFluid");         % ← re-fetch after save
-    % ... re-fetch all interfaces ...
-
-    %% Architecture Model
-    if bdIsLoaded(modelName), close_system(modelName, 0); end
-    model = systemcomposer.createModel(modelName);                 % ← name only, no 2nd arg
-    arch  = model.Architecture;
-    linkDictionary(model, dictFile);
-
-    %% Components
-    compA = addComponent(arch, "ComponentA");
-    compB = addComponent(arch, "ComponentB");
-
-    %% Ports
-    addTypedPort(compA.Architecture, "OutPort1", "out", thermalIface);
-    addTypedPort(compB.Architecture, "InPort1",  "in",  thermalIface);
-
-    %% Connections — CRITICAL: use connect(srcPort, dstPort), NO architecture argument
-    connect(compA.getPort("OutPort1"), compB.getPort("InPort1"));
-
-    %% Layout, Save, and Open
-    Simulink.BlockDiagram.arrangeSystem(modelName);
-    save_system(char(modelName), char(fullfile(archDir, modelName)));
-    open_system(char(modelName));   % ← required: createModel alone does not show the SC editor
-    fprintf("Model created: %s\n", modelName);
-end
-
-% ── Helpers ──────────────────────────────────────────────────────────────────
-
-function addTypedPort(compArch, name, direction, iface)
-    port = addPort(compArch, name, direction);
-    port.setInterface(iface);    % ← setInterface(), NOT port.Interface = iface (read-only)
-end
+```
+buildMySystemModel(modelName, dictFile, archDir)
 ```
 
 ---
 
 ## Phase 3: Profile & Stereotypes
 
-```matlab
-function buildMySystemProfile()
-    profileName = "MySystemProfile";
-    modelName   = "MySystem";
+See [`code/buildMySystemProfile.m`](code/buildMySystemProfile.m) for the full parameterized function:
 
-    % Always rebuild model first — avoids stale stereotype errors on re-runs
-    buildMySystemModel();
-
-    %% Create Profile
-    systemcomposer.profile.Profile.closeAll();   % ← no arguments
-    profile = systemcomposer.profile.Profile.createProfile(profileName);  % ← name only
-
-    %% Stereotypes
-    st = addStereotype(profile, "MyComponent", AppliesTo="Component", Description="...");
-    addProperty(st, "NominalPower_W", Type="double", Units="W",  DefaultValue="0");
-    addProperty(st, "SafetyClass",    Type="string",             DefaultValue='"standard"');
-    %                                                                        ^^^^^^^^^^^
-    %   String DefaultValue must be a quoted MATLAB expression — wrap in extra quotes
-
-    % profile.save(folder) saves <profileName>.xml into that folder — ALWAYS pass a folder
-    % profile.save()        saves to current working directory (only if that's where you want it)
-    % NEVER pass a file path ending in .xml — it creates a DIRECTORY with that name instead of a file
-    profile.save(archDir);   % ← correct: folder path, no filename
-
-    %% Apply to Model
-    model = systemcomposer.openModel(modelName);
-    applyProfile(model, profileName);
-    arch  = model.Architecture;
-
-    applyStereotype(arch.getComponent("ComponentA"), profileName + ".MyComponent");
-
-    %% Set Property Values
-    setProperty(arch.getComponent("ComponentA"), ...   % ← setProperty(), NOT setPropertyValue()
-        profileName + ".MyComponent.SafetyClass", '"safety-critical"');
-    %                                              ^^^^^^^^^^^^^^^^^^^
-    %   String values also need inner quotes when passed to setProperty
-
-    save(model);
-    fprintf("Profile applied: %s\n", profileName);
-end
+```
+buildMySystemProfile(profileName, modelName, archDir)
 ```
 
 ---
@@ -224,14 +136,8 @@ and the top-level arrange won't fix it.
 
 Calling `applyProfile` on a model that already has the profile throws a "uniqueness constraint"
 error. The cleanest solution is to rebuild the model from scratch at the top of the profile
-script — this guarantees a clean slate and makes both scripts independently idempotent:
-
-```matlab
-function buildMySystemProfile()
-    buildMySystemModel();   % always start fresh
-    ...
-end
-```
+script — this guarantees a clean slate and makes both scripts independently idempotent.
+`buildMySystemProfile` already does this: its first call is always `buildMySystemModel(...)`.
 
 ---
 
@@ -241,41 +147,16 @@ Use `Type="double"` for all elements and document physical units in comments.
 Do not use `addValueType` for physical quantities — it creates `Simulink.ValueType`
 objects the bus compiler cannot resolve (breaks "update diagram").
 
-**Thermal**
-```matlab
-thermalFluidIface = addInterface(dict, "ThermalFluid");
-addElement(thermalFluidIface, "Temperature",  Type="double");   % K
-addElement(thermalFluidIface, "MassFlowRate", Type="double");   % kg/s
+See [`code/addCommonInterfaces.m`](code/addCommonInterfaces.m) for an illustrative starting
+point covering Thermal, Electrical, Mechanical, and UserCommand interfaces:
 
-heatFlowIface = addInterface(dict, "HeatFlow");
-addElement(heatFlowIface, "HeatFlowRate", Type="double");       % W
-
-tempSignalIface = addInterface(dict, "TemperatureSignal");
-addElement(tempSignalIface, "Value", Type="double");            % K
+```
+ifaces = addCommonInterfaces(dict)
 ```
 
-**Electrical**
-```matlab
-elecPowerIface = addInterface(dict, "ElectricalPower");
-addElement(elecPowerIface, "Voltage", Type="double");           % V
-addElement(elecPowerIface, "Current", Type="double");           % A
-
-controlSignalIface = addInterface(dict, "ControlSignal");
-addElement(controlSignalIface, "Value", Type="double");         % boolean 0/1
-```
-
-**Mechanical (rotational)**
-```matlab
-rotMechIface = addInterface(dict, "RotationalMechanical");
-addElement(rotMechIface, "Torque",          Type="double");     % Nm
-addElement(rotMechIface, "AngularVelocity", Type="double");     % rad/s
-```
-
-**User Interface / Control signals**
-```matlab
-userCommandIface = addInterface(dict, "UserCommand");
-addElement(userCommandIface, "CommandID", Type="double");       % enumerated code
-```
+Returns a struct (`ifaces.ThermalFluid`, `ifaces.ElectricalPower`, etc.). Remember to call
+`dict.save()` and re-fetch interfaces before passing them to `setInterface()` — see the
+re-fetch pattern above.
 
 ---
 
@@ -287,25 +168,10 @@ won't flag.
 ### 1. Check for unconnected ports
 
 Ports that were added but never wired are silently valid at build time but represent
-incomplete or inconsistent architecture. This loop surfaces them immediately:
+incomplete or inconsistent architecture. See [`code/checkUnconnectedPorts.m`](code/checkUnconnectedPorts.m):
 
-```matlab
-model = systemcomposer.openModel("MySystem");
-arch  = model.Architecture;
-
-anyUnconnected = false;
-for i = 1:numel(arch.Components)
-    ports = arch.Components(i).Ports;
-    for j = 1:numel(ports)
-        if isempty(ports(j).Connectors)
-            fprintf("Unconnected: %s.%s\n", arch.Components(i).Name, ports(j).Name);
-            anyUnconnected = true;
-        end
-    end
-end
-if ~anyUnconnected
-    fprintf("All ports connected (%d connectors).\n", numel(arch.Connectors));
-end
+```
+checkUnconnectedPorts(modelName)
 ```
 
 ### 2. Update diagram
