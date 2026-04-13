@@ -38,7 +38,7 @@ Phase 5   Physical Architecture       MySystem.slx + PhysicalInterfaces.sldd
 Phase 6   F→L Allocation Set          MyFunctionalToLogical.mldatx
 Phase 7   L→P Allocation Set          MyLogicalToPhysical.mldatx
             |  (refines)
-Phase 8   Requirements Allocation     SR --> Component Refine links (L or P level)
+Phase 8   Requirements Allocation     SR→Function (mandatory), SR→Logical, SR→Physical Refine links
             |  (quantifies)
 Phase 9   Analysis                    optional — roll-up, trade study, sensitivity
             |  (verifies)

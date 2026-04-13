@@ -153,14 +153,32 @@ Show: requirement counts, derivation link count. Ask the user to confirm counts 
 
 ## Phase 2: Functional Architecture
 
-### Propose
+### Functional Analysis (propose first)
 
-Based on the SNs (what the system *does*), propose:
-- **Logical functions** — 4–8 functions. For each: name (verb phrase), one-sentence description
+Before drafting any architecture, perform a functional analysis: work through each SR
+and ask what the system must *do* to satisfy it. Present a derivation table:
+
+```
+SR-ID    Summary                          Function(s)
+────────────────────────────────────────────────────────
+SR-001   Roll rate command range          SenseAircraftState, ComputeControlLaws
+SR-002   Pitch rate command range         SenseAircraftState, ComputeControlLaws
+SR-003   Surface actuator response time   CommandControlSurfaces
+...
+```
+
+Every SR must map to at least one function. If a function has no SRs, flag it —
+it is either orphaned or covering an undocumented need. This table becomes the
+SR → Function Refine link table in Phase 7.
+
+Wait for approval on the SR → Function mapping before proceeding.
+
+### Propose architecture
+
+After the mapping is approved, propose:
+- **Functions** — the unique set from the derivation table. For each: name (verb phrase), one-sentence description
 - **Functional interfaces** — abstract information flows between functions. For each: name, semantic fields with types. Keep these at a logical level — no physical units or implementation detail yet
 - **Connections** — data flow between functions
-
-Present as a function list + data flow description. Wait for approval.
 
 Note: functional architecture is independent of physical implementation — functions should reflect operational concepts from the SNs, not implementation decisions.
 
@@ -333,23 +351,53 @@ Show the L→P allocation table. Ask user to confirm every logical element maps 
 
 ### Propose
 
-Map each SR to the component(s) responsible for satisfying it — either Logical or Physical,
-wherever the requirement is most naturally owned. Present as a table. One SR may map to
-multiple components; one component typically owns multiple SRs.
+Present three allocation tables for user review:
 
-Wait for approval.
+**Table 1 — SR → Function** (reuse the derivation table from Phase 2 Functional Analysis):
+```
+SR-ID    Function(s)
+────────────────────────────────────
+SR-001   SenseAircraftState, ComputeControlLaws
+SR-002   ComputeControlLaws
+...
+```
+Every SR must appear here. This is mandatory.
+
+**Table 2 — SR → Logical component** (non-functional requirements):
+Use for: timing, performance, safety, security, or requirements specific to a logical role.
+```
+SR-ID    Logical Component(s)
+────────────────────────────────────
+SR-005   ControlUnit
+SR-008   SensingUnit, ControlUnit
+...
+```
+
+**Table 3 — SR → Physical component** (hardware-specific requirements):
+Use for: hardware specs, environmental constraints, EMC ratings, packaging, installation.
+```
+SR-ID    Physical Component(s)
+────────────────────────────────────
+SR-011   PowerSystem
+SR-014   ActuatorSystem, PowerSystem
+...
+```
+
+An SR may appear in multiple tables. Flag any SR with no entry in Table 1 — every SR
+must trace to at least one function. Wait for approval before generating.
 
 ### Generate
 
 After approval, generate `scripts/buildAllocation.m` using patterns from the `mbse-architecture` skill:
 - Remove existing Refine links before recreating (idempotent)
+- Open all three models: `MyFunctional`, `MyLogical`, `MySystem`
 - Use `fileparts(fileparts(mfilename('fullpath')))` for the project root — never `'..'` in paths passed to System Composer
 - `addpath(archDir)` then `openModel` by model name, not full path
 - Call `slreq.saveAll()` at the end
 
 ### Checkpoint
 
-Show: total Refine link count, per-component requirement count, any SRs with no allocation (flag these — every SR should be allocated somewhere).
+Show: SR → Function link count, SR → Logical link count, SR → Physical link count. Flag any SR missing from Table 1.
 
 ---
 

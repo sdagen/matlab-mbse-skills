@@ -260,13 +260,30 @@ systemcomposer.allocation.editor('path/to/MyAllocation.mldatx')
 
 ---
 
-## Phase 8: Requirements → Component Refine Links
+## Phase 8: Requirements → Architecture Refine Links
 
-`Refine` links map system requirements to the architecture components responsible
-for satisfying them. Links can target Logical components, Physical components, or
-both — place them at whichever layer the requirement is most naturally allocated.
-This is distinct from the allocation sets (Phases 6–7, `systemcomposer.allocation`)
-— Refine links live in the requirements toolbox and are queryable via `slreq`.
+`Refine` links connect system requirements to the architecture artifacts responsible
+for satisfying them. This is distinct from the allocation sets (Phases 6–7,
+`systemcomposer.allocation`) — Refine links live in the requirements toolbox and
+are queryable via `slreq`.
+
+Three types of Refine links are created, in order:
+
+**SR → Function (mandatory):** Every SR must trace to at least one function in the
+functional architecture. This closes the loop between requirements and the functional
+decomposition — if a function has no SRs pointing to it, it is either orphaned or
+covering an undocumented need.
+
+**SR → Logical component:** Use when the requirement is non-functional (timing,
+performance, safety, security) or is specific to a logical solution role.
+
+**SR → Physical component:** Use when the requirement is hardware-specific
+(connector type, EMC rating, operating temperature range, packaging envelope,
+installation constraints).
+
+One SR may link to a function *and* a logical *and* a physical component. Each link
+type answers a different question: what does the system do (F), what kind of element
+owns it (L), what hardware implements it (P).
 
 See [`code/buildAllocation.m`](code/buildAllocation.m) for the full parameterized function:
 

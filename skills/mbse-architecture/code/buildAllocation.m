@@ -1,19 +1,26 @@
 function buildAllocation(reqDir, archDir)
-% BUILDALLOCATION Create Refine links from system requirements to architecture components.
-%   Removes any existing Refine links then recreates them from the allocation
-%   table (idempotent). Distinct from the functional-to-physical allocation set
-%   (Phase 4) — Refine links live in the requirements toolbox and are queryable
-%   via slreq.
+% BUILDALLOCATION Create Refine links from system requirements to architecture.
+%   Creates two types of Refine links (idempotent):
+%     SR -> Function:           mandatory — every SR traces to at least one function
+%     SR -> Logical component:  for non-functional requirements (timing, performance,
+%                               safety, security) or requirements specific to a logical role
+%     SR -> Physical component: for hardware-specific, environmental, EMC, or
+%                               packaging/installation requirements
+%   Removes all existing Refine links before recreating.
 %
 %   Inputs:
 %     reqDir  - Directory containing SystemRequirements.slreqx (string)
-%     archDir - Directory containing the physical SC model (string)
+%     archDir - Directory containing the SC models (string)
 
     slreq.clear();
     srSet = slreq.load(fullfile(reqDir, 'SystemRequirements.slreqx'));
     addpath(archDir);
-    model = systemcomposer.openModel('MySystem');   % open by name — never use '..' in SC paths
-    arch  = model.Architecture;
+    funcModel = systemcomposer.openModel('MyFunctional');
+    funcArch  = funcModel.Architecture;
+    logModel  = systemcomposer.openModel('MyLogical');
+    logArch   = logModel.Architecture;
+    physModel = systemcomposer.openModel('MySystem');
+    physArch  = physModel.Architecture;
 
     % Remove existing Refine links (idempotent)
     allReqs = srSet.find('Type', 'Requirement');
@@ -24,19 +31,57 @@ function buildAllocation(reqDir, archDir)
         end
     end
 
-    % { SR-ID, { component names... } }
-    allocation = {
-        'SR-SYS-001', { 'ComponentA', 'ComponentB' };
-        'SR-SYS-002', { 'ComponentA'               };
+    % SR -> Function Refine links (mandatory — every SR must trace to at least one function)
+    % { SR-ID, { function component names... } }
+    funcAllocation = {
+        'SR-SYS-001', { 'FunctionA', 'FunctionB' };
+        'SR-SYS-002', { 'FunctionA'               };
     };
 
-    for i = 1:size(allocation, 1)
-        req = srSet.find('Id', allocation{i, 1});
-        for j = 1:numel(allocation{i, 2})
-            comp     = arch.getComponent(allocation{i, 2}{j});
+    for i = 1:size(funcAllocation, 1)
+        req = srSet.find('Id', funcAllocation{i, 1});
+        for j = 1:numel(funcAllocation{i, 2})
+            func     = funcArch.getComponent(funcAllocation{i, 2}{j});
+            lnk      = slreq.createLink(req, func);
+            lnk.Type = 'Refine';
+        end
+    end
+
+    % SR -> Logical component Refine links
+    % Use for: non-functional requirements (timing, performance, safety, security),
+    %          requirements specific to a logical solution role
+    % { SR-ID, { logical component names... } }
+    logAllocation = {
+        'SR-SYS-001', { 'SensingUnit'  };
+        'SR-SYS-003', { 'ControlUnit'  };
+    };
+
+    for i = 1:size(logAllocation, 1)
+        req = srSet.find('Id', logAllocation{i, 1});
+        for j = 1:numel(logAllocation{i, 2})
+            comp     = logArch.getComponent(logAllocation{i, 2}{j});
             lnk      = slreq.createLink(req, comp);
             lnk.Type = 'Refine';
         end
     end
+
+    % SR -> Physical component Refine links
+    % Use for: hardware-specific requirements, environmental constraints,
+    %          EMC, packaging, and installation requirements
+    % { SR-ID, { physical component names... } }
+    physAllocation = {
+        'SR-SYS-002', { 'ComponentA', 'ComponentB' };
+        'SR-SYS-004', { 'ComponentA'               };
+    };
+
+    for i = 1:size(physAllocation, 1)
+        req = srSet.find('Id', physAllocation{i, 1});
+        for j = 1:numel(physAllocation{i, 2})
+            comp     = physArch.getComponent(physAllocation{i, 2}{j});
+            lnk      = slreq.createLink(req, comp);
+            lnk.Type = 'Refine';
+        end
+    end
+
     slreq.saveAll();
 end
