@@ -36,10 +36,10 @@ reruns — no state to undo.
 
 ### What you get
 
-A complete MATLAB project with a `.prj` file, 7 idempotent build scripts, all
-generated artifacts, and a single `buildAll()` entry point that rebuilds everything
-from scratch. See the [FCS example](examples/fcs/README.md) for what a finished project
-looks like.
+A complete MATLAB project with a `.prj` file, idempotent build scripts for each
+phase, all generated artifacts, and a single `buildAll()` entry point that rebuilds
+everything from scratch. See the [FCS example](examples/fcs/README.md) for what a
+finished project looks like.
 
 ### Starting a guided session
 
@@ -59,7 +59,7 @@ the others provide the technical API patterns it draws on.
 |---|---|
 | `mbse-new-project` | Guided end-to-end setup — interview, propose, generate, run, confirm |
 | `mbse` | Thin workflow index — which skill covers which phase |
-| `mbse-architecture` | Physical + functional architecture, profiles/stereotypes, allocation set, analysis |
+| `mbse-architecture` | Functional, logical, and physical architecture; three-level interface dictionaries; profiles/stereotypes; F→L and L→P allocation sets; analysis |
 | `simulink-requirements` | All slreq API — requirements creation, links, traceability analysis, coverage |
 | `simulink-test` | Simulink Test `.mldatx` files — test suites, test cases, Tier 2 verification |
 | `system-composer` | Deep System Composer API reference — connection syntax, dictionary patterns, profile gotchas, layout |
@@ -68,9 +68,10 @@ the others provide the technical API patterns it draws on.
 
 ## Workflow
 
-The MBSE workflow runs in seven steps. Each step is a separate idempotent build script.
+The MBSE workflow follows the RFLPV methodology (Requirements, Functions, Logical,
+Physical, Verification). Each phase is a separate idempotent build script.
 
-### Step 1 — Requirements
+### Phase 1 — Requirements
 
 - Write **Stakeholder Needs** (what the system must do, in operator terms)
 - Derive **System Requirements** from stakeholder needs, linked with `Derive`
@@ -78,17 +79,27 @@ The MBSE workflow runs in seven steps. Each step is a separate idempotent build 
   read them at run time so values are never hard-coded
 - Artifacts: `StakeholderNeeds.slreqx`, `SystemRequirements.slreqx`
 
-### Step 2 — Functional Architecture
+### Phase 2 — Functional Architecture
 
 - Build a System Composer model for the **logical functions** of the system,
-  independent of physical implementation
-- Create a **functional interface dictionary** with logical, abstract interfaces —
+  independent of any physical implementation
+- Create a **functional interface dictionary** with abstract interfaces —
   semantic names and flows, no physical units or implementation detail
 - Artifacts: `Functional.slx`, `FunctionalInterfaces.sldd`
 
-### Step 3 — Physical Architecture + Profile
+### Phase 3 — Logical Architecture
 
-- Build a System Composer model with typed components and ports
+- Build a System Composer model for **design-agnostic solution principles** — the
+  "what kind of element" layer between functions and physical hardware
+- Components are nouns describing a solution role: `SensingUnit`, `ControlUnit`,
+  `ActuationUnit` — no hardware brand names or part numbers
+- Create a **logical interface dictionary** with typed, semantically-named fields
+  but without datasheet-level specifics (no voltage ranges, baud rates, tolerances)
+- Artifacts: `Logical.slx`, `LogicalInterfaces.sldd`
+
+### Phase 4 — Physical Architecture + Profile
+
+- Build a System Composer model with concrete hardware/software components and typed ports
 - Create a **physical interface dictionary** with implementation-level interfaces —
   concrete field names, specific types, and physical units
 - Define a **profile** with a component properties stereotype capturing the
@@ -97,28 +108,36 @@ The MBSE workflow runs in seven steps. Each step is a separate idempotent build 
   with initial estimates
 - Artifacts: `System.slx`, `PhysicalInterfaces.sldd`, `Profile.xml`
 
-### Step 4 — Functional→Physical Allocation
+### Phase 5 — Functional→Logical Allocation
 
-- Create an allocation set mapping each logical function to the physical component(s)
-  that implement it (ARP4754A functional allocation tier)
-- Artifact: `Allocation.mldatx`
+- Create an allocation set mapping each logical function to the logical element(s)
+  that realize it
+- Artifact: `FunctionalToLogical.mldatx`
 
-### Step 5 — Requirements Allocation
+### Phase 6 — Logical→Physical Allocation
 
-- Create `Refine` links from each SR to the component(s) responsible for implementing it
+- Create an allocation set mapping each logical element to the physical component(s)
+  that implement it
+- Artifact: `LogicalToPhysical.mldatx`
+
+### Phase 7 — Requirements Allocation
+
+- Create `Refine` links from each SR to the component(s) responsible for satisfying it
+- Links can target Logical components, Physical components, or both — place them
+  at whichever layer the requirement is most naturally owned
 - Navigate forward (requirement → components) and backward (component → requirements)
 
-### Step 6 — Analysis (optional)
+### Phase 8 — Analysis (optional)
 
 - Compute system-level roll-ups and per-component margins from the architecture profile
 - Budget caps are read from requirements at run time
 - Artifact: `Analysis.mat`
 
-### Step 7 — Test Cases
+### Phase 9 — Test Cases
 
 - Create one TC requirement per SR, each describing a stimulus and measurable pass criterion
 - Link each TC to its SR with a `Verify` link
-- Generate a coverage report; SRs verified by analysis (Step 6) are expected not covered
+- Generate a coverage report; SRs verified by analysis (Phase 8) are expected not covered
 - Artifact: `TestCases.slreqx`
 
 ---
@@ -145,11 +164,15 @@ Every artifact is traceable up and down the chain:
 ```
 Stakeholder Need  (StakeholderNeeds.slreqx)
     └─[Derive]─▶  System Requirement  (SystemRequirements.slreqx)
-                      ├─[Refine]─▶  Architecture Component  (System.slx)
+                      ├─[Refine]─▶  Component  (Logical.slx or System.slx)
                       │                 ▲
-                      │             [Allocate]  (Allocation.mldatx)
+                      │          [L→P Allocate]  (LogicalToPhysical.mldatx)
                       │                 │
-                      │             Logical Function  (Functional.slx)
+                      │          Logical Element  (Logical.slx)
+                      │                 ▲
+                      │          [F→L Allocate]  (FunctionalToLogical.mldatx)
+                      │                 │
+                      │           Function  (Functional.slx)
                       └─[Verify]─▶  TC Requirement  (TestCases.slreqx)
                                         └─[Verify]─▶  Simulink Test Case  (Tier 2, if model exists)
 ```

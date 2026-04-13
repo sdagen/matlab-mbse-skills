@@ -1,7 +1,12 @@
 # FCS MBSE Example
 
+> **Note:** This example was built before the RFLPV workflow update and uses a two-model
+> architecture (Functional + Physical) with a single F→P allocation set. It will be rebuilt
+> to include the Logical layer (`FCSLogical.slx`), three interface dictionaries, and separate
+> F→L and L→P allocation sets. The scripts and artifacts below reflect the pre-RFLPV state.
+
 A complete end-to-end MBSE example for a **Flight Control System (FCS)**, demonstrating
-the full workflow from stakeholder needs through verified test cases with bidirectional
+the workflow from stakeholder needs through verified test cases with bidirectional
 traceability at every step.
 
 ---

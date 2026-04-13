@@ -18,9 +18,9 @@ workflow**. Tell Claude you want to start a new MBSE project and it will:
    approval before generating anything
 3. **Generate and run each build script** — one phase at a time, showing you the
    output and asking you to confirm before moving on
-4. **Produce a complete, runnable MATLAB project** — with a `.prj` file, 7 idempotent
-   build scripts, all artifacts, and a `buildAll()` entry point that rebuilds
-   everything from scratch
+4. **Produce a complete, runnable MATLAB project** — with a `.prj` file, idempotent
+   build scripts for each phase, all artifacts, and a `buildAll()` entry point that
+   rebuilds everything from scratch
 
 The result is a project like the [FCS example](examples/fcs/) — a full MBSE artifact
 set with requirements, architecture, allocation, analysis, and test cases all wired
@@ -79,20 +79,12 @@ openProject('path/to/examples/fcs')
 buildFCSAll()
 ```
 
-Or run steps individually — all scripts are idempotent:
-
-```
-Step 1  buildFCSRequirements()    StakeholderNeeds.slreqx, SystemRequirements.slreqx
-Step 2  buildFCSFunctional()      FCSFunctional.slx, FCSFunctionalInterfaces.sldd
-Step 3  buildFCSModel()           FCSSystem.slx, FCSPhysicalInterfaces.sldd, FCSBudget.xml
-Step 4  buildFCSAllocationSet()   FCSAllocation.mldatx
-Step 5  buildFCSAllocation()      Refine links: 13 SRs → 25 component links
-Step 6  rollupAnalysis()          PowerMassRollup.mat (power 408/450 W, mass 33/35 kg)
-Step 7  buildFCSTestCases()       TestCases.slreqx, 13 TCs with Verify links
-```
-
 See [OVERVIEW.md](OVERVIEW.md) for a full description of the workflow, artifacts,
 and design principles.
+
+> **Note:** The FCS example is being rebuilt to reflect the current RFLPV workflow
+> (three-model architecture, F→L and L→P allocation sets). The example scripts
+> will be updated in a follow-on pass.
 
 ---
 
@@ -101,11 +93,15 @@ and design principles.
 ```
 Stakeholder Need  (StakeholderNeeds.slreqx)
     └─[Derive]─▶  System Requirement  (SystemRequirements.slreqx)
-                      ├─[Refine]─▶  Architecture Component  (System.slx)
+                      ├─[Refine]─▶  Component  (Logical.slx or System.slx)
                       │                 ▲
-                      │             [Allocate]  (Allocation.mldatx)
+                      │          [L→P Allocate]  (LogicalToPhysical.mldatx)
                       │                 │
-                      │             Logical Function  (Functional.slx)
+                      │          Logical Element  (Logical.slx)
+                      │                 ▲
+                      │          [F→L Allocate]  (FunctionalToLogical.mldatx)
+                      │                 │
+                      │           Function  (Functional.slx)
                       └─[Verify]─▶  TC Requirement  (TestCases.slreqx)
                                         └─[Verify]─▶  Simulink Test Case  (Tier 2, if model exists)
 ```
