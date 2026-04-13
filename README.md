@@ -40,8 +40,6 @@ To start, just say something like:
 
 MATLAB R2023a or later recommended. The FCS example was developed and tested on R2025b.
 
-Simulink Test is supported but not required — see [Two-Tier Verification](OVERVIEW.md#two-tier-verification).
-
 ---
 
 ## Repository Structure
@@ -103,8 +101,7 @@ Stakeholder Need  (StakeholderNeeds.slreqx)
                       │                 │
                       │           Function  (Functional.slx)
                       └─[Verify]─▶  TC Requirement  (TestCases.slreqx)
-                                        └─[Verify]─▶  Simulink Test Case  (Tier 2, if model exists)
+                                        └─[Verify]─▶  Simulink Test Case  (if behavioral model exists)
 ```
 
-All links are bidirectional and navigable from either end in the Requirements Editor
-or programmatically via `req.outLinks()` / `req.inLinks()`.
+All links are bidirectional.
