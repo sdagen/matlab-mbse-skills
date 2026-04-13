@@ -123,42 +123,10 @@ slreq.saveAll();   % always call after creating cross-artifact links
 
 ## Requirements Script Skeleton
 
-```matlab
-function buildMyRequirements()
-    rootDir = fileparts(mfilename('fullpath'));   % scripts/ is project root peer
-    reqDir  = fullfile(rootDir, '..', 'requirements');
-    snFile  = fullfile(reqDir, 'StakeholderNeeds.slreqx');
-    srFile  = fullfile(reqDir, 'SystemRequirements.slreqx');
+See [`code/buildMyRequirements.m`](code/buildMyRequirements.m) for the full parameterized function:
 
-    slreq.clear();
-    % Delete files AND their .slmx link files to avoid stale cross-artifact links
-    for f = {snFile, srFile, ...
-             strrep(snFile, '.slreqx', '~slreqx.slmx'), ...
-             strrep(srFile, '.slreqx', '~slreqx.slmx')}
-        if isfile(f{1}), delete(f{1}); end
-    end
-
-    snSet = slreq.new(snFile);
-    sn1 = addReq(snSet, 'SN-SYS-001', 'Title', "The operator shall ...", "Rationale.");
-    snSet.save();
-
-    srSet = slreq.new(srFile);
-    sr1 = addReq(srSet, 'SR-SYS-001', 'Title', "The system shall ... [criterion].", ...
-        "Derived from SN-SYS-001.");
-    srSet.save();
-
-    lnk = slreq.createLink(sr1, sn1);
-    lnk.Type = 'Derive';
-    slreq.saveAll();
-end
-
-function req = addReq(rs, id, summary, description, rationale)
-    req             = rs.add();
-    req.Id          = id;
-    req.Summary     = summary;
-    req.Description = description;
-    req.Rationale   = rationale;
-end
+```
+buildMyRequirements(snFile, srFile)
 ```
 
 ---
@@ -193,39 +161,10 @@ applied), **Pass criterion** (measurable result that constitutes success).
 
 ## Test Case Script Skeleton
 
-```matlab
-function buildMyTestCases()
-    rootDir = fileparts(mfilename('fullpath'));
-    reqDir  = fullfile(rootDir, '..', 'requirements');
-    srFile  = fullfile(reqDir, 'SystemRequirements.slreqx');
-    tcFile  = fullfile(reqDir, 'TestCases.slreqx');
-    tcLink  = strrep(tcFile, '.slreqx', '~slreqx.slmx');
+See [`code/buildMyTestCases.m`](code/buildMyTestCases.m) for the full parameterized function:
 
-    slreq.clear();
-    srSet = slreq.load(srFile);   % slreq.load() for scripts; slreq.open() opens the UI
-    if isfile(tcFile),  delete(tcFile);  end
-    if isfile(tcLink),  delete(tcLink);  end
-    tcSet = slreq.new(tcFile);
-
-    % { TC-ID, Summary, Description, SR-ID }
-    testCases = {
-        'TC-SYS-001', 'Verify SR-001', ...
-            'Apply stimulus X. Measure Y. Pass if Y meets criterion Z.', ...
-            'SR-SYS-001';
-    };
-
-    for i = 1:size(testCases, 1)
-        tc             = tcSet.add();
-        tc.Id          = testCases{i, 1};
-        tc.Summary     = testCases{i, 2};
-        tc.Description = testCases{i, 3};
-        tc.Rationale   = ['Verifies ', testCases{i, 4}];
-        sr             = srSet.find('Id', testCases{i, 4});
-        lnk            = slreq.createLink(tc, sr);
-        lnk.Type       = 'Verify';
-    end
-    slreq.saveAll();
-end
+```
+buildMyTestCases(srFile, tcFile)
 ```
 
 ---
@@ -262,25 +201,16 @@ fprintf('Coverage: %d / %d (%.0f%%)\n', covered, numel(allSRs), ...
 
 ## Loading Files for Analysis
 
+To load a single file:
 ```matlab
-% Load a requirement set (idempotent — safe to call on already-loaded files)
 rs = slreq.load('path/to/MyReqs.slreqx');
+```
 
-% Find all .slreqx and .slmx files in a project tree
-projRoot = 'C:\path\to\project';
-reqxFiles = dir(fullfile(projRoot, '**', '*.slreqx'));
-slmxFiles = dir(fullfile(projRoot, '**', '*.slmx'));
+To load all requirement and link files across a project tree, see
+[`code/loadProjectRequirements.m`](code/loadProjectRequirements.m):
 
-for i = 1:numel(reqxFiles)
-    slreq.load(fullfile(reqxFiles(i).folder, reqxFiles(i).name));
-end
-for i = 1:numel(slmxFiles)
-    try
-        slreq.load(fullfile(slmxFiles(i).folder, slmxFiles(i).name));
-    catch
-        % Skip files that fail to load (missing artifacts, etc.)
-    end
-end
+```
+loadProjectRequirements(projRoot)
 ```
 
 `slreq.load()` is for scripted analysis (no UI). `slreq.open()` opens the
@@ -441,133 +371,42 @@ ls.Filename   % full path to the .slmx file itself
 
 ## Coverage Analysis — Per-Requirement Status
 
-```matlab
-reqs = rs.find('Type', 'Requirement');
-fprintf('%-30s  %-10s  %-8s\n', 'Req ID', 'Impl', 'Verify');
-fprintf('%s\n', repmat('-', 1, 55));
-for i = 1:numel(reqs)
-    r = reqs(i);
-    hasImpl   = false;
-    hasVerify = false;
-    in_ = r.inLinks();
-    for k = 1:numel(in_)
-        if strcmp(in_(k).Type, 'Implement'); hasImpl   = true; end
-        if strcmp(in_(k).Type, 'Verify');    hasVerify = true; end
-    end
-    fprintf('%-30s  %-10s  %-8s\n', r.Id, ...
-        tf2str(hasImpl), tf2str(hasVerify));
-end
+See [`code/reportCoverageByReq.m`](code/reportCoverageByReq.m):
 
-function s = tf2str(cond)
-    if cond; s = 'YES'; else; s = 'no'; end
-end
+```
+reportCoverageByReq(rs)
 ```
 
 ---
 
 ## Coverage Analysis — Aggregate Across All ReqSets
 
-```matlab
-projRoot = 'C:\path\to\project';
-for f = dir(fullfile(projRoot, '**', '*.slreqx'))'
-    slreq.load(fullfile(f.folder, f.name));
-end
-for f = dir(fullfile(projRoot, '**', '*.slmx'))'
-    try; slreq.load(fullfile(f.folder, f.name)); catch; end
-end
+See [`code/reportCoverageAggregate.m`](code/reportCoverageAggregate.m) — loads all files
+via `loadProjectRequirements`, then prints a per-ReqSet summary table:
 
-allRS = slreq.find('type', 'ReqSet');
-fprintf('%-35s  %5s  %7s  %5s  %6s\n', 'ReqSet', 'Reqs', 'Derive', 'Impl', 'Verify');
-fprintf('%s\n', repmat('-', 1, 70));
-for i = 1:numel(allRS)
-    rs_i = allRS(i);
-    reqs = rs_i.find('Type', 'Requirement');
-    nD = 0; nI = 0; nV = 0;
-    for j = 1:numel(reqs)
-        r   = reqs(j);
-        out = r.outLinks();
-        for k = 1:numel(out)
-            switch out(k).Type
-                case 'Derive';    nD = nD + 1;
-                case 'Implement'; nI = nI + 1;
-                case 'Verify';    nV = nV + 1;
-            end
-        end
-        in_ = r.inLinks();
-        for k = 1:numel(in_)
-            switch in_(k).Type
-                case 'Derive';    nD = nD + 1;
-                case 'Implement'; nI = nI + 1;
-                case 'Verify';    nV = nV + 1;
-            end
-        end
-    end
-    fprintf('%-35s  %5d  %7d  %5d  %6d\n', rs_i.Name, numel(reqs), nD, nI, nV);
-end
+```
+reportCoverageAggregate(projRoot)
 ```
 
 ---
 
 ## Link Health Report
 
-```matlab
-allLS = slreq.find('type', 'LinkSet');
-for i = 1:numel(allLS)
-    ls = allLS(i);
-    [broken, ~] = ls.getBrokenLinks();
-    orphans     = ls.getOrphanLinks();
-    if isempty(broken) && isempty(orphans); continue; end
-    [~, fname] = fileparts(ls.Filename);
-    fprintf('\n%s:\n', fname);
-    for j = 1:numel(broken)
-        fprintf('  BROKEN  Src="%s" -> Dst="%s"\n', ...
-            broken(j).getSourceLabel(), broken(j).getDestinationLabel());
-    end
-    fprintf('  %d orphan links\n', numel(orphans));
-end
+See [`code/reportLinkHealth.m`](code/reportLinkHealth.m) — operates on all currently loaded
+LinkSets; call `loadProjectRequirements` first:
+
+```
+reportLinkHealth()
 ```
 
 ---
 
 ## Full Traceability Chain Trace
 
-```matlab
-function traceRequirement(rs, reqId)
-    r = rs.find('Id', reqId);
-    if isempty(r)
-        fprintf('Requirement "%s" not found.\n', reqId);
-        return;
-    end
-    fprintf('=== %s: %s ===\n', r.Id, r.getDescriptionAsText());
+See [`code/traceRequirement.m`](code/traceRequirement.m):
 
-    out = r.outLinks();
-    if ~isempty(out)
-        fprintf('\nDerives from / traces to:\n');
-        for k = 1:numel(out)
-            lnk = out(k);
-            ref = lnk.getReferenceInfo();
-            fprintf('  [%s] -> "%s"', lnk.Type, lnk.getDestinationLabel());
-            if isstruct(ref)
-                fprintf(' (artifact: %s, id: %s)', ref.artifact, ref.id);
-            end
-            fprintf('\n');
-        end
-    end
-
-    in_ = r.inLinks();
-    if ~isempty(in_)
-        fprintf('\nImplemented / verified / derived by:\n');
-        for k = 1:numel(in_)
-            lnk = in_(k);
-            src = lnk.source();
-            fprintf('  [%s] <- "%s"', lnk.Type, lnk.getSourceLabel());
-            if isstruct(src)
-                fprintf(' (domain: %s)', src.domain);
-            end
-            fprintf('\n');
-        end
-    end
-end
+```
+traceRequirement(rs, reqId)
 ```
 
 ---
