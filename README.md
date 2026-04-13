@@ -89,19 +89,19 @@ and design principles.
 ## Traceability
 
 ```
-Stakeholder Need  (StakeholderNeeds.slreqx)
-    └─[Derive]─▶  System Requirement  (SystemRequirements.slreqx)
-                      ├─[Refine]─▶  Component  (Logical.slx or System.slx)
-                      │                 ▲
-                      │          [L→P Allocate]  (LogicalToPhysical.mldatx)
-                      │                 │
-                      │          Logical Element  (Logical.slx)
-                      │                 ▲
-                      │          [F→L Allocate]  (FunctionalToLogical.mldatx)
-                      │                 │
-                      │           Function  (Functional.slx)
-                      └─[Verify]─▶  TC Requirement  (TestCases.slreqx)
-                                        └─[Verify]─▶  Simulink Test Case  (if behavioral model exists)
+Requirements links:
+  Stakeholder Need  (StakeholderNeeds.slreqx)
+      └─[Derive]─▶  System Requirement  (SystemRequirements.slreqx)
+                        ├─[Refine]─▶  Function           (Functional.slx)   mandatory
+                        ├─[Refine]─▶  Logical Component  (Logical.slx)      non-functional reqs
+                        ├─[Refine]─▶  Physical Component (System.slx)       hardware reqs
+                        └─[Verify]─▶  TC Requirement     (TestCases.slreqx)
+                                          └─[Verify]─▶  Simulink Test Case  (if behavioral model exists)
+
+Architecture chain (allocation):
+  Function  (Functional.slx)
+      └─[F→L Allocate]─▶  Logical Element  (Logical.slx)
+                               └─[L→P Allocate]─▶  Physical Component  (System.slx)
 ```
 
 All links are bidirectional.

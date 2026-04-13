@@ -81,6 +81,11 @@ Physical, Verification). Each phase is a separate idempotent build script.
 
 ### Phase 2 — Functional Architecture
 
+- **Functional Analysis first:** work through each SR and identify what the system
+  must *do* to satisfy it — producing an SR → Function derivation table before any
+  model is built. Every SR must map to at least one function; functions with no SRs
+  are flagged as orphaned or undocumented. This table seeds the mandatory SR→Function
+  Refine links in Phase 7.
 - Build a System Composer model for the **logical functions** of the system,
   independent of any physical implementation
 - Create a **functional interface dictionary** with abstract interfaces —
@@ -122,10 +127,17 @@ Physical, Verification). Each phase is a separate idempotent build script.
 
 ### Phase 7 — Requirements Allocation
 
-- Create `Refine` links from each SR to the component(s) responsible for satisfying it
-- Links can target Logical components, Physical components, or both — place them
-  at whichever layer the requirement is most naturally owned
-- Navigate forward (requirement → components) and backward (component → requirements)
+Three types of Refine links, all in one script:
+
+- **SR → Function (mandatory):** every SR traces to the function(s) that realize it.
+  Derived from the Phase 2 Functional Analysis table.
+- **SR → Logical component:** for non-functional requirements — timing, performance,
+  safety, security, or requirements specific to a logical solution role.
+- **SR → Physical component:** for hardware-specific requirements — connector specs,
+  EMC ratings, operating temperature, packaging envelope, installation constraints.
+
+One SR may carry all three link types. Navigate forward (SR → artifacts) and backward
+(artifact → SRs) at any layer.
 
 ### Phase 8 — Analysis (optional)
 
@@ -162,19 +174,19 @@ additional value over the TC requirements from Tier 1.
 Every artifact is traceable up and down the chain:
 
 ```
-Stakeholder Need  (StakeholderNeeds.slreqx)
-    └─[Derive]─▶  System Requirement  (SystemRequirements.slreqx)
-                      ├─[Refine]─▶  Component  (Logical.slx or System.slx)
-                      │                 ▲
-                      │          [L→P Allocate]  (LogicalToPhysical.mldatx)
-                      │                 │
-                      │          Logical Element  (Logical.slx)
-                      │                 ▲
-                      │          [F→L Allocate]  (FunctionalToLogical.mldatx)
-                      │                 │
-                      │           Function  (Functional.slx)
-                      └─[Verify]─▶  TC Requirement  (TestCases.slreqx)
-                                        └─[Verify]─▶  Simulink Test Case  (Tier 2, if model exists)
+Requirements links:
+  Stakeholder Need  (StakeholderNeeds.slreqx)
+      └─[Derive]─▶  System Requirement  (SystemRequirements.slreqx)
+                        ├─[Refine]─▶  Function           (Functional.slx)   mandatory
+                        ├─[Refine]─▶  Logical Component  (Logical.slx)      non-functional reqs
+                        ├─[Refine]─▶  Physical Component (System.slx)       hardware reqs
+                        └─[Verify]─▶  TC Requirement     (TestCases.slreqx)
+                                          └─[Verify]─▶  Simulink Test Case  (Tier 2, if model exists)
+
+Architecture chain (allocation):
+  Function  (Functional.slx)
+      └─[F→L Allocate]─▶  Logical Element  (Logical.slx)
+                               └─[L→P Allocate]─▶  Physical Component  (System.slx)
 ```
 
 All links are bidirectional and navigable from either end in the Requirements Editor
