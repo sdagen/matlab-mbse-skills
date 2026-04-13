@@ -51,48 +51,10 @@ being open.
 What the system *does* — logical functions and the abstract information flows
 between them. Creates and owns the functional interface dictionary.
 
-```matlab
-function buildMyFunctional()
-    rootDir   = fileparts(fileparts(mfilename('fullpath')));
-    archDir   = fullfile(rootDir, 'architecture');
-    modelName = "MyFunctional";
-    dictFile  = fullfile(archDir, 'MyFunctionalInterfaces.sldd');
-    slxFile   = fullfile(archDir, char(modelName) + ".slx");
+See [`code/buildMyFunctional.m`](code/buildMyFunctional.m) for the full parameterized function:
 
-    if bdIsLoaded(modelName), close_system(modelName, 0); end
-    Simulink.data.dictionary.closeAll("-discard");
-    if isfile(dictFile), delete(dictFile); end
-    if isfile(slxFile),  delete(slxFile);  end
-
-    addpath(archDir);
-    dict = systemcomposer.createDictionary(dictFile);
-
-    % Add logical interfaces — abstract, no physical implementation detail
-    myFlowIface = addInterface(dict, "MyFlow");
-    addElement(myFlowIface, "Value", Type="double");
-    % ... more interfaces ...
-    dict.save();
-
-    % Re-fetch after save (required before use in setInterface)
-    myFlowIface = dict.getInterface("MyFlow");
-
-    model = systemcomposer.createModel(modelName);
-    arch  = model.Architecture;
-    linkDictionary(model, strrep(dictFile, '\', '/'));
-
-    funcA = addComponent(arch, 'FunctionA');
-    addTypedPort(funcA.Architecture, 'FlowOut', 'out', myFlowIface);
-    % ... more functions, ports, connections ...
-
-    Simulink.BlockDiagram.arrangeSystem(modelName);
-    save_system(char(modelName), char(fullfile(archDir, modelName)));
-    open_system(char(modelName));
-end
-
-function addTypedPort(compArch, name, direction, iface)
-    port = addPort(compArch, name, direction);
-    port.setInterface(iface);
-end
+```
+buildMyFunctional(modelName, dictFile, archDir)
 ```
 
 ---
@@ -102,43 +64,10 @@ end
 What the system *implements* — hardware/software components, physical interfaces,
 and stereotype properties. Creates and owns the physical interface dictionary.
 
-```matlab
-function buildMyModel()
-    rootDir   = fileparts(fileparts(mfilename('fullpath')));
-    archDir   = fullfile(rootDir, 'architecture');
-    modelName = "MySystem";
-    dictFile  = fullfile(archDir, 'MyPhysicalInterfaces.sldd');
-    slxFile   = fullfile(archDir, char(modelName) + ".slx");
+See [`code/buildMyModel.m`](code/buildMyModel.m) for the full parameterized function:
 
-    if bdIsLoaded(modelName), close_system(modelName, 0); end
-    Simulink.data.dictionary.closeAll("-discard");
-    if isfile(dictFile), delete(dictFile); end
-    if isfile(slxFile),  delete(slxFile);  end
-
-    addpath(archDir);
-    dict = systemcomposer.createDictionary(dictFile);
-
-    % Add physical interfaces — concrete types, specific fields, physical units
-    myPhysIface = addInterface(dict, "MyPhysicalSignal");
-    addElement(myPhysIface, "Voltage", Type="double");   % V
-    addElement(myPhysIface, "Current", Type="double");   % A
-    % ... more interfaces ...
-    dict.save();
-
-    myPhysIface = dict.getInterface("MyPhysicalSignal");
-
-    model = systemcomposer.createModel(modelName);
-    arch  = model.Architecture;
-    linkDictionary(model, strrep(dictFile, '\', '/'));
-
-    compA = addComponent(arch, "ComponentA");
-    addTypedPort(compA.Architecture, "PowerIn", "in", myPhysIface);
-    % ... more components, ports, connections, then profile ...
-
-    Simulink.BlockDiagram.arrangeSystem(modelName);
-    save_system(char(modelName), char(fullfile(archDir, modelName)));
-    open_system(char(modelName));
-end
+```
+buildMyModel(modelName, dictFile, archDir)
 ```
 
 **Key gotchas:**
@@ -277,35 +206,12 @@ Two distinct allocation steps:
 
 ## Phase 4: Functional-to-Physical Allocation Set
 
-```matlab
-rootDir   = fileparts(fileparts(mfilename('fullpath')));
-archDir   = fullfile(rootDir, 'architecture');
-allocFile = fullfile(archDir, 'MyAllocation.mldatx');
+See [`code/buildAllocationSet.m`](code/buildAllocationSet.m) for the full parameterized function.
+The allocation set name is derived automatically by appending `'Set'` to the file base name,
+ensuring it differs from the file name (required to avoid a "name must be unique" save error):
 
-systemcomposer.allocation.AllocationSet.closeAll();
-if isfile(allocFile), delete(allocFile); end
-
-addpath(archDir);
-funcModel = systemcomposer.openModel('MyFunctional');
-physModel = systemcomposer.openModel('MySystem');
-funcArch  = funcModel.Architecture;
-physArch  = physModel.Architecture;
-
-% Use a name that differs from the file base name — save() derives 'MyAllocation'
-% from the file path and checks uniqueness; if the in-memory name matches, the set
-% conflicts with itself and save fails with "name must be unique".
-allocSet = systemcomposer.allocation.createAllocationSet(...
-    'MyAllocationSet', funcModel, physModel);
-
-scenario = createScenario(allocSet, 'FunctionalToPhysical');
-
-allocate(scenario, funcArch.getComponent('FunctionA'), physArch.getComponent('ComponentX'));
-allocate(scenario, funcArch.getComponent('FunctionB'), physArch.getComponent('ComponentY'));
-% One function can map to multiple physical components:
-allocate(scenario, funcArch.getComponent('FunctionC'), physArch.getComponent('ComponentX'));
-allocate(scenario, funcArch.getComponent('FunctionC'), physArch.getComponent('ComponentZ'));
-
-save(allocSet, allocFile);
+```
+buildAllocationSet(allocFile, funcModelName, physModelName, archDir)
 ```
 
 ### Query allocations
@@ -330,43 +236,10 @@ responsible for satisfying them. This is distinct from the functional→physical
 allocation set (Phase 4, `systemcomposer.allocation`) — Refine links live in the
 requirements toolbox and are queryable via `slreq`.
 
-```matlab
-function buildAllocation()
-    rootDir = fileparts(fileparts(mfilename('fullpath')));
-    reqDir  = fullfile(rootDir, 'requirements');
-    archDir = fullfile(rootDir, 'architecture');
+See [`code/buildAllocation.m`](code/buildAllocation.m) for the full parameterized function:
 
-    slreq.clear();
-    srSet = slreq.load(fullfile(reqDir, 'SystemRequirements.slreqx'));
-    addpath(archDir);
-    model = systemcomposer.openModel('MySystem');   % open by name — never use '..' in SC paths
-    arch  = model.Architecture;
-
-    % Remove existing Refine links (idempotent)
-    allReqs = srSet.find('Type', 'Requirement');
-    for i = 1:numel(allReqs)
-        lnks = allReqs(i).outLinks();   % method on the object — NOT slreq.outLinks(req)
-        for j = 1:numel(lnks)
-            if strcmp(lnks(j).Type, 'Refine'), lnks(j).remove(); end
-        end
-    end
-
-    % { SR-ID, { component names... } }
-    allocation = {
-        'SR-SYS-001', { 'ComponentA', 'ComponentB' };
-        'SR-SYS-002', { 'ComponentA'               };
-    };
-
-    for i = 1:size(allocation, 1)
-        req = srSet.find('Id', allocation{i, 1});
-        for j = 1:numel(allocation{i, 2})
-            comp     = arch.getComponent(allocation{i, 2}{j});
-            lnk      = slreq.createLink(req, comp);
-            lnk.Type = 'Refine';
-        end
-    end
-    slreq.saveAll();
-end
+```
+buildAllocation(reqDir, archDir)
 ```
 
 Never use `'..'` in paths passed to System Composer — use `fileparts` twice to get the
