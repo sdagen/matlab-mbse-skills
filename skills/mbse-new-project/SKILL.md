@@ -92,38 +92,10 @@ Ask the following questions (can be in one message):
 After gathering answers, create the MATLAB Project inline (not as a saved script,
 since the scripts/ folder doesn't exist yet):
 
-```matlab
-proj    = matlab.project.createProject(Name=projectName, Folder=projectFolder);
-rootDir = proj.RootFolder;
+See [`code/setupMBSEProject.m`](code/setupMBSEProject.m) for the full parameterized function:
 
-% Standard MBSE folder structure
-for sub = {'requirements', 'architecture', 'analysis', 'verification', 'scripts'}
-    mkdir(fullfile(rootDir, sub{1}));
-end
-
-% Derived folders for Simulink cache and code generation — not tracked in the
-% project (they are build outputs), but must exist before setting the properties
-mkdir(fullfile(rootDir, 'derived', 'cache'));
-mkdir(fullfile(rootDir, 'derived', 'codegen'));
-
-% CRITICAL: use absolute paths — these properties resolve relative to the
-% current working directory, not the project root, so relative paths will be wrong
-proj.SimulinkCacheFolder   = fullfile(rootDir, 'derived', 'cache');
-proj.SimulinkCodeGenFolder = fullfile(rootDir, 'derived', 'codegen');
-
-% Track all MBSE folders and add each to the MATLAB path. Do NOT track
-% derived/ — it contains generated build outputs.
-% IMPORTANT: all tracked folders must also be on the project path or
-% runChecks will fail with Project:Checks:ProjectPath.
-for sub = {'requirements', 'architecture', 'analysis', 'verification', 'scripts'}
-    addFolderIncludingChildFiles(proj, fullfile(rootDir, sub{1}));
-    addPath(proj, fullfile(rootDir, sub{1}));
-end
-
-% Shortcuts point to specific tracked files — add them as files are created.
-% E.g. after Phase 9: addShortcut(proj, fullfile(rootDir, 'scripts', 'buildAll.m'))
-
-close(proj);
+```
+setupMBSEProject(projectName, projectFolder)
 ```
 
 **Do not create a startup.m.** Build scripts are idempotent and self-cleaning —
@@ -135,36 +107,13 @@ MATLAB Project Shortcuts panel. Add them progressively as key files are created:
 `buildAll.m`, the main `.slx` model, `SystemRequirements.slreqx`. Shortcuts take
 only the file path — no label argument: `addShortcut(proj, filePath)`.
 
-    close(proj);
-    fprintf('Project created: %s\n', rootDir);
-    fprintf('Open with: openProject(''%s'')\n', rootDir);
-end
-```
-
 Generate this as `scripts/setupMBSEProject.m`, run it, confirm the project opens correctly, then proceed.
 
-Also create `scripts/registerWithProject.m` as a shared helper used by all build scripts:
+Also create `scripts/registerWithProject.m` as a shared helper used by all build scripts.
+See [`code/registerWithProject.m`](code/registerWithProject.m) for the full function:
 
-```matlab
-function registerWithProject(files, folders)
-% registerWithProject  Add files and folders to the MATLAB project if one is open.
-%   files   — cell array of absolute file paths; non-existent files are skipped
-%   folders — cell array of folder paths; each is tracked and added to project path
-%   Safe to call repeatedly — addFile and addPath are both idempotent.
-%   Silently does nothing if no project is currently open.
-    if nargin < 2, folders = {}; end
-    proj = matlab.project.currentProject();
-    if isempty(proj.Name), return; end
-    for i = 1:numel(files)
-        if isfile(files{i}), addFile(proj, files{i}); end
-    end
-    for i = 1:numel(folders)
-        if isfolder(folders{i})
-            addFolderIncludingChildFiles(proj, folders{i});
-            addPath(proj, folders{i});
-        end
-    end
-end
+```
+registerWithProject(files, folders)
 ```
 
 Every build script must call `registerWithProject` at the end, passing the files it creates. `buildAll.m` additionally registers all script files. This keeps the MATLAB Project in sync with the file system without manual intervention.
