@@ -28,7 +28,7 @@ The MBSE workflow uses three separate System Composer models, one per layer:
 |---|---|---|---|
 | `MyFunctional.slx` | F — Functions | What does the system *do*? | Abstract flows, solution-neutral |
 | `MyLogical.slx` | L — Logical | What *kind* of element solves it? | Typed signals, design-agnostic |
-| `MySystem.slx` | P — Physical | *How* is it built? | Concrete fields, physical units |
+| `MyPhysical.slx` | P — Physical | *How* is it built? | Concrete fields, physical units |
 
 Each model has its own interface dictionary at the appropriate abstraction level.
 All three dictionaries are independent — no model script depends on another being open.
@@ -77,7 +77,7 @@ datasheet-level specifics — no voltage ranges, baud rates, or tolerance values
 
 ---
 
-### Physical architecture model (`MySystem.slx`) — build third
+### Physical architecture model (`MyPhysical.slx`) — build third
 
 What the system *implements* — hardware/software components, physical interfaces,
 and stereotype properties. Creates and owns the physical interface dictionary.

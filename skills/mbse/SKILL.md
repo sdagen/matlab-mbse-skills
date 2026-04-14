@@ -32,7 +32,7 @@ Phase 3   Functional Architecture     MyFunctional.slx + FunctionalInterfaces.sl
 Phase 4   Logical Architecture        MyLogical.slx + LogicalInterfaces.sldd
             |  design-agnostic solution principles — SensingUnit, ControlUnit, etc.
             |  (implemented by)
-Phase 5   Physical Architecture       MySystem.slx + PhysicalInterfaces.sldd
+Phase 5   Physical Architecture       MyPhysical.slx + PhysicalInterfaces.sldd
             |  concrete hardware/software components with stereotype properties
             |  (allocated via)
 Phase 6   F→L Allocation Set          MyFunctionalToLogical.mldatx

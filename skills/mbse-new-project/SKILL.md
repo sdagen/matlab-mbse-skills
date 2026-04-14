@@ -47,7 +47,7 @@ my-system/
   rebuilding the architecture model.
 
 - **Profile setup belongs in the architecture script.** Create and apply the
-  stereotype profile at the end of `buildModel()` so estimates travel with the
+  stereotype profile at the end of `buildPhysical()` so estimates travel with the
   model and survive every rebuild.
 
 - **`slreq.saveAll()` saves cross-set links.** Call it after any session that
@@ -197,7 +197,7 @@ Immediately after, also generate and run `scripts/buildFunctionalAllocation.m` a
 - Calls `slreq.saveAll()` at the end
 - Includes a header comment noting: re-run this whenever `buildFunctional.m` is re-run (SIDs change on rebuild); this script is superseded by `buildAllocation.m` in Phase 7
 
-**Apply the same pattern in Phase 3 and Phase 4:** after `buildLogical.m`, generate and run `buildLogicalAllocation.m` (SR → Logical Refine links for non-functional reqs); after `buildModel.m`, generate and run `buildPhysicalAllocation.m` (SR → Physical Refine links for hardware-specific reqs and budget caps). Propose the SR → Logical and SR → Physical mapping tables for user approval before each. All three allocation scripts use the same `removeRefineLinksToModel` helper so they can run in any order without wiping each other out.
+**Apply the same pattern in Phase 3 and Phase 4:** after `buildLogical.m`, generate and run `buildLogicalAllocation.m` (SR → Logical Refine links for non-functional reqs); after `buildPhysical.m`, generate and run `buildPhysicalAllocation.m` (SR → Physical Refine links for hardware-specific reqs and budget caps). Propose the SR → Logical and SR → Physical mapping tables for user approval before each. All three allocation scripts use the same `removeRefineLinksToModel` helper so they can run in any order without wiping each other out.
 
 This gives the user immediate traceability at each architecture layer. Phase 7's `buildAllocation.m` will absorb and replace all three per-phase scripts.
 
@@ -256,7 +256,7 @@ Present as a component list + connection diagram in text. Wait for approval.
 
 ### Generate
 
-After approval, generate `scripts/buildModel.m` using patterns from the `mbse-architecture`
+After approval, generate `scripts/buildPhysical.m` using patterns from the `mbse-architecture`
 and `system-composer` skills:
 - Creates the physical interface dictionary (`MyPhysicalInterfaces.sldd`) with implementation-level interfaces
 - Creates the SC model, adds components, ports, connections
@@ -284,13 +284,13 @@ Present as a table. Wait for approval.
 
 ### Generate
 
-Add stereotype creation and application to `buildModel.m` (at the end, after the architecture is built), following the `mbse-architecture` profile patterns:
+Add stereotype creation and application to `buildPhysical.m` (at the end, after the architecture is built), following the `mbse-architecture` profile patterns:
 - Use `systemcomposer.profile.Profile.createProfile`
 - Add stereotypes with `addStereotype`, properties with `addProperty`
 - Apply to components with `applyStereotype`, set values with `setProperty`
 - `profile.save()` requires a char path — not a string type
 
-Re-run `buildModel.m` (idempotent — it rebuilds from scratch).
+Re-run `buildPhysical.m` (idempotent — it rebuilds from scratch).
 
 ### Checkpoint
 
@@ -505,7 +505,7 @@ scriptFiles = { ...
     fullfile(scriptsDir, 'buildRequirements.m'), ...
     fullfile(scriptsDir, 'buildFunctional.m'), ...
     fullfile(scriptsDir, 'buildLogical.m'), ...
-    fullfile(scriptsDir, 'buildModel.m'), ...
+    fullfile(scriptsDir, 'buildPhysical.m'), ...
     fullfile(scriptsDir, 'buildFunctionalToLogical.m'), ...
     fullfile(scriptsDir, 'buildLogicalToPhysical.m'), ...
     fullfile(scriptsDir, 'buildAllocation.m'), ...
@@ -560,7 +560,7 @@ Project: <Name>  (<root folder>)
 │   ├── <Name>FunctionalInterfaces.sldd
 │   ├── <Name>Logical.slx              (logical model — Phase 3)
 │   ├── <Name>LogicalInterfaces.sldd
-│   ├── <Name>System.slx               (physical model — Phase 4)
+│   ├── <Name>Physical.slx             (physical model — Phase 4)
 │   ├── <Name>PhysicalInterfaces.sldd
 │   ├── <Name>Profile.xml              (stereotype profile — Phase 4b)
 │   ├── <Name>FunctionalToLogical.mldatx  (F→L allocation — Phase 5)
@@ -574,7 +574,7 @@ Project: <Name>  (<root folder>)
     ├── buildRequirements.m
     ├── buildFunctional.m
     ├── buildLogical.m
-    ├── buildModel.m
+    ├── buildPhysical.m
     ├── buildFunctionalToLogical.m
     ├── buildLogicalToPhysical.m
     ├── buildAllocation.m
