@@ -12,15 +12,20 @@ The primary way to use these skills is through the **`mbse-new-project` guided
 workflow**. Tell Claude you want to start a new MBSE project and it will:
 
 1. **Interview you** — system name, location, description, subsystems, engineering
-   concerns (mass, power, cost, …), analysis needs, and whether a simulation model exists
+   concerns (mass, volume, power, cost, …), analysis needs, and whether a simulation
+   model exists
 2. **Propose content at each phase** — stakeholder needs, system requirements,
    components, interfaces, functions, allocations, test cases — waiting for your
    approval before generating anything
 3. **Generate and run each build script** — one phase at a time, showing you the
-   output and asking you to confirm before moving on
-4. **Produce a complete, runnable MATLAB project** — with a `.prj` file, idempotent
-   build scripts for each phase, all artifacts, and a `buildAll()` entry point that
-   rebuilds everything from scratch
+   output and asking you to confirm before moving on. Each of the three architecture
+   phases (Functional, Logical, Physical) is paired with its own allocation script
+   that creates SR → architecture Refine links immediately, so traceability is
+   reviewable at every layer instead of deferred to a late-stage consolidation pass
+4. **Produce a complete, runnable MATLAB project** — with a `.prj` file, a stereotype
+   profile capturing component engineering properties (mass, volume, power, cost,
+   …) with initial estimates, idempotent build scripts for each phase, all
+   artifacts, and a `buildAll()` entry point that rebuilds everything from scratch
 
 The result is a project like the [FCS example](examples/fcs/) — a full MBSE artifact
 set with requirements, architecture, allocation, analysis, and test cases all wired
@@ -94,14 +99,14 @@ Requirements links:
       └─[Derive]─▶  System Requirement  (SystemRequirements.slreqx)
                         ├─[Refine]─▶  Function           (Functional.slx)   mandatory
                         ├─[Refine]─▶  Logical Component  (Logical.slx)      non-functional reqs
-                        ├─[Refine]─▶  Physical Component (System.slx)       hardware reqs
+                        ├─[Refine]─▶  Physical Component (Physical.slx)       hardware reqs
                         └─[Verify]─▶  TC Requirement     (TestCases.slreqx)
                                           └─[Verify]─▶  Simulink Test Case  (if behavioral model exists)
 
 Architecture chain (allocation):
   Function  (Functional.slx)
       └─[F→L Allocate]─▶  Logical Element  (Logical.slx)
-                               └─[L→P Allocate]─▶  Physical Component  (System.slx)
+                               └─[L→P Allocate]─▶  Physical Component  (Physical.slx)
 ```
 
 All links are bidirectional.

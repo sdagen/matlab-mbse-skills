@@ -70,6 +70,9 @@ the others provide the technical API patterns it draws on.
 
 The MBSE workflow follows the RFLPV methodology (Requirements, Functions, Logical,
 Physical, Verification). Each phase is a separate idempotent build script.
+Requirements-to-architecture Refine links are created immediately after each
+architecture layer is built (via per-phase allocation scripts), so traceability
+is reviewable at every step rather than deferred to a single late-stage pass.
 
 ### Phase 1 — Requirements
 
@@ -85,12 +88,16 @@ Physical, Verification). Each phase is a separate idempotent build script.
   must *do* to satisfy it — producing an SR → Function derivation table before any
   model is built. Every SR must map to at least one function; functions with no SRs
   are flagged as orphaned or undocumented. This table seeds the mandatory SR→Function
-  Refine links in Phase 7.
+  Refine links created by the paired `buildFunctionalAllocation.m` script below.
 - Build a System Composer model for the **logical functions** of the system,
   independent of any physical implementation
 - Create a **functional interface dictionary** with abstract interfaces —
   semantic names and flows, no physical units or implementation detail
+- Create **SR → Function Refine links** (mandatory: every SR traces to at least
+  one function) in a paired allocation script generated and run right after the
+  model — so requirements traceability is immediately reviewable
 - Artifacts: `Functional.slx`, `FunctionalInterfaces.sldd`
+- Scripts: `buildFunctional.m`, `buildFunctionalAllocation.m`
 
 ### Phase 3 — Logical Architecture
 
@@ -100,7 +107,11 @@ Physical, Verification). Each phase is a separate idempotent build script.
   `ActuationUnit` — no hardware brand names or part numbers
 - Create a **logical interface dictionary** with typed, semantically-named fields
   but without datasheet-level specifics (no voltage ranges, baud rates, tolerances)
+- Create **SR → Logical Refine links** for non-functional requirements (timing,
+  performance, safety, security) or requirements specific to a logical solution
+  role, in a paired allocation script
 - Artifacts: `Logical.slx`, `LogicalInterfaces.sldd`
+- Scripts: `buildLogical.m`, `buildLogicalAllocation.m`
 
 ### Phase 4 — Physical Architecture + Profile
 
@@ -108,10 +119,17 @@ Physical, Verification). Each phase is a separate idempotent build script.
 - Create a **physical interface dictionary** with implementation-level interfaces —
   concrete field names, specific types, and physical units
 - Define a **profile** with a component properties stereotype capturing the
-  engineering attributes relevant to your project — mass, power, cost, reliability,
-  latency, or whatever drives design decisions — and apply it to all components
-  with initial estimates
-- Artifacts: `System.slx`, `PhysicalInterfaces.sldd`, `Profile.xml`
+  engineering attributes relevant to your project — mass, volume, power, cost,
+  reliability, latency, throughput, or whatever drives design decisions — and
+  apply it to all components with initial estimates. The profile is created and
+  applied at the end of the architecture script so estimates travel with the
+  model and survive every rebuild.
+- Create **SR → Physical Refine links** for hardware-specific requirements
+  (connector specs, EMC ratings, operating temperature, packaging, installation)
+  and for system-level budget caps on physical properties (mass, volume, power,
+  cost) that roll up across components, in a paired allocation script
+- Artifacts: `Physical.slx`, `PhysicalInterfaces.sldd`, `Profile.xml`
+- Scripts: `buildPhysical.m`, `buildPhysicalAllocation.m`
 
 ### Phase 5 — Functional→Logical Allocation
 
@@ -125,32 +143,27 @@ Physical, Verification). Each phase is a separate idempotent build script.
   that implement it
 - Artifact: `LogicalToPhysical.mldatx`
 
-### Phase 7 — Requirements Allocation
-
-Three types of Refine links, all in one script:
-
-- **SR → Function (mandatory):** every SR traces to the function(s) that realize it.
-  Derived from the Phase 2 Functional Analysis table.
-- **SR → Logical component:** for non-functional requirements — timing, performance,
-  safety, security, or requirements specific to a logical solution role.
-- **SR → Physical component:** for hardware-specific requirements — connector specs,
-  EMC ratings, operating temperature, packaging envelope, installation constraints.
-
-One SR may carry all three link types. Navigate forward (SR → artifacts) and backward
-(artifact → SRs) at any layer.
-
-### Phase 8 — Analysis (optional)
+### Phase 7 — Analysis (optional)
 
 - Compute system-level roll-ups and per-component margins from the architecture profile
 - Budget caps are read from requirements at run time
 - Artifact: `Analysis.mat`
+- Script: `runAnalysis.m`
 
-### Phase 9 — Test Cases
+### Phase 8 — Test Cases
 
 - Create one TC requirement per SR, each describing a stimulus and measurable pass criterion
 - Link each TC to its SR with a `Verify` link
-- Generate a coverage report; SRs verified by analysis (Phase 8) are expected not covered
+- Generate a coverage report; SRs verified by analysis (Phase 7) are expected not covered
 - Artifact: `TestCases.slreqx`
+- Script: `buildTestCases.m`
+
+> **Note on requirements allocation.** SR → Function / Logical / Physical Refine
+> links are not a separate phase. They are generated alongside each architecture
+> layer (in Phases 2, 3, and 4) by paired per-phase allocation scripts that share
+> a `removeRefineLinksToModel` helper. Each script cleans up only its own
+> model-scoped links, so they can be re-run in any order without wiping each
+> other out.
 
 ---
 
@@ -179,14 +192,14 @@ Requirements links:
       └─[Derive]─▶  System Requirement  (SystemRequirements.slreqx)
                         ├─[Refine]─▶  Function           (Functional.slx)   mandatory
                         ├─[Refine]─▶  Logical Component  (Logical.slx)      non-functional reqs
-                        ├─[Refine]─▶  Physical Component (System.slx)       hardware reqs
+                        ├─[Refine]─▶  Physical Component (Physical.slx)       hardware reqs
                         └─[Verify]─▶  TC Requirement     (TestCases.slreqx)
                                           └─[Verify]─▶  Simulink Test Case  (Tier 2, if model exists)
 
 Architecture chain (allocation):
   Function  (Functional.slx)
       └─[F→L Allocate]─▶  Logical Element  (Logical.slx)
-                               └─[L→P Allocate]─▶  Physical Component  (System.slx)
+                               └─[L→P Allocate]─▶  Physical Component  (Physical.slx)
 ```
 
 All links are bidirectional and navigable from either end in the Requirements Editor
