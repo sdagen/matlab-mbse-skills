@@ -191,9 +191,19 @@ After approval, generate `scripts/buildFunctional.m` using patterns from the `mb
 - `modelName` must be a double-quoted MATLAB string for `char(modelName) + ".slx"` to work
 - Re-fetch interfaces after `dict.save()` before calling `setInterface`
 
+Immediately after, also generate and run `scripts/buildFunctionalAllocation.m` and the shared helper `scripts/removeRefineLinksToModel.m`:
+- `removeRefineLinksToModel(srSet, modelBasename)` iterates SR outLinks and removes only Refine links whose destination `getReferenceInfo().artifact` matches the given model basename — used by all three per-phase allocation scripts so each cleans up only its own links
+- `buildFunctionalAllocation.m` calls this helper (scoped to the functional model), then creates SR → Function Refine links from the Phase 2 analysis table
+- Calls `slreq.saveAll()` at the end
+- Includes a header comment noting: re-run this whenever `buildFunctional.m` is re-run (SIDs change on rebuild); this script is superseded by `buildAllocation.m` in Phase 7
+
+**Apply the same pattern in Phase 3 and Phase 4:** after `buildLogical.m`, generate and run `buildLogicalAllocation.m` (SR → Logical Refine links for non-functional reqs); after `buildModel.m`, generate and run `buildPhysicalAllocation.m` (SR → Physical Refine links for hardware-specific reqs and budget caps). Propose the SR → Logical and SR → Physical mapping tables for user approval before each. All three allocation scripts use the same `removeRefineLinksToModel` helper so they can run in any order without wiping each other out.
+
+This gives the user immediate traceability at each architecture layer. Phase 7's `buildAllocation.m` will absorb and replace all three per-phase scripts.
+
 ### Checkpoint
 
-Show: function count, interface count, connection count. Ask user to confirm the functional model looks right.
+Show: function count, interface count, connection count, SR→Function Refine link count. Ask user to confirm the functional model and traceability look right.
 
 ---
 
