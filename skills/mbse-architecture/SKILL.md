@@ -301,3 +301,13 @@ project root, then `addpath` before opening the model by name (shown above).
 Analysis is optional and project-specific. Read `references/analysis.md` in
 this skill folder when the user needs to set up quantitative analysis
 (roll-up, trade study, sensitivity, margins).
+
+**Default pattern for roll-ups:** write a dedicated analysis function
+(`MySystemRollupAnalysis.m`, one file per model, signature
+`function fn(instance, varargin)`) matching the MathWorks
+`CostAndWeightRollupAnalysis` shape, and drive it with
+`iterate(instance, 'PostOrder', @fn)`. Do **not** default to flat-loop
+aggregation in MATLAB — the analysis-function approach writes rolled-up
+values to every parent in the hierarchy so the Instance Viewer is useful at
+every level. Details, non-sum aggregations (min/mean), and when to bypass
+the pattern: `references/analysis.md`.

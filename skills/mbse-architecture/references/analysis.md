@@ -1,95 +1,148 @@
 # MBSE Analysis Reference (Phase 6)
 
 Analysis is optional — only relevant when the project needs quantitative
-roll-up, trade studies, sensitivity analysis, or margin reporting. The type
-of analysis depends on the project; this covers the common `systemcomposer.analysis`
-API patterns.
+roll-up, trade studies, sensitivity analysis, or margin reporting. This file
+covers the common `systemcomposer.analysis` API patterns.
 
 ---
 
-## Core Pattern: instantiate → getValue → setValue → save
+## The canonical roll-up pattern: analysis function + iterate(PostOrder)
+
+**Always prefer this pattern over manual flat-loop aggregation in MATLAB.** It
+matches the MathWorks example (`CostAndWeightRollupAnalysis` in
+`SimpleRollUpAnalysisExample/`) and has a big concrete benefit: rolled-up
+values are written to **every** parent node in the hierarchy, so the Analysis
+Viewer / Instance Viewer shows meaningful aggregated numbers at every level,
+not just at the top.
+
+### Shape of an analysis function
+
+Put it in its own file, one function per model. Function name matches the
+file name. Signature is fixed:
 
 ```matlab
-% 1. Create analysis instance from the profile
-addpath(archDir);
-model    = systemcomposer.openModel(modelName);   % by name, not full path
-arch     = model.Architecture;
-instance = instantiate(arch, profileName, 'MyAnalysis');
+function MySystemRollupAnalysis(instance, varargin)
+% Analysis function for the MySystem.slx example
 
-% 2. Read property values — returns double, not char
-prefix = [profileName, '.ComponentProperties.'];
-for i = 1:numel(instance.Components)
-    ci    = instance.Components(i);
-    val1  = getValue(ci, [prefix, 'PropertyA']);   % double
-    val2  = getValue(ci, [prefix, 'PropertyB']);
+% Calculate total <property>
+if instance.isComponent() && ~isempty(instance.Components)...
+ && instance.hasValue('MyProfile.Stereotype.propertyName')
+    total = 0;
+    for child = instance.Components
+        if child.hasValue('MyProfile.Stereotype.propertyName')
+           v = child.getValue('MyProfile.Stereotype.propertyName');
+           total = total + v;
+        end
+    end
+    instance.setValue('MyProfile.Stereotype.propertyName', total);
 end
 
-% 3. Write computed results back to instance (does not modify the design model)
-setValue(ci, [prefix, 'ComputedMargin'], budget - val1);
-
-% 4. Save for Analysis Viewer — save to analysis/, not architecture/
-save(instance, fullfile(analysisDir, 'MyAnalysis.mat'));
-% Open: systemcomposer.analysis.openViewer('MyAnalysis')  ← instance NAME not file path
+% ... one such block per property to aggregate
+end
 ```
 
-Key differences from `getPropertyValue`:
-- `getValue` returns **double** — no `str2double` wrapper needed
-- `setValue` writes into the instance only — the design model is unchanged
-- `instance.Components` iterates all components — no hardcoded list needed
-- The saved `.mat` is loadable in the Analysis Viewer
+Each block is guarded by three conditions **in this order**:
+- `instance.isComponent()` — skip ports, connectors, the root architecture
+  (architecture elements don't have the same property surface)
+- `~isempty(instance.Components)` — skip leaves; their estimates come from
+  the profile defaults and should not be overwritten
+- `instance.hasValue(...)` — skip components whose stereotype doesn't
+  include this property
 
----
+### Invoking it
 
-## Adding Computed Properties to the Stereotype
-
-Declare any value you intend to write back with `setValue` as a property in
-the stereotype (in `buildMyModel.m`) so the Analysis Viewer can show it:
+From the driver script, after `instantiate`:
 
 ```matlab
-addProperty(st, 'PropertyA',       Type="double", Units="W",  DefaultValue="0");
-addProperty(st, 'ComputedMargin',  Type="double", Units="W",  DefaultValue="0");  % computed
+instance = instantiate(arch, profileName, 'MyAnalysis');
+iterate(instance, 'PostOrder', @MySystemRollupAnalysis);
 ```
 
-Set to 0 at design time; the analysis script fills it in at run time.
+`'PostOrder'` visits **children before parents**, which is what makes the
+rollup work: by the time the function runs on a parent, every child already
+has its aggregated value set.
+
+### Non-sum aggregations
+
+The canonical MathWorks example shows sums only. The same guard+loop+setValue
+shape works for any aggregation — just change the combiner:
+
+```matlab
+% Throughput bottleneck (min across producing children, ignoring zeros so
+% controllers/sensors with throughput=0 don't short-circuit the result)
+if instance.isComponent() && ~isempty(instance.Components)...
+ && instance.hasValue('MyProfile.Stereotype.throughput')
+    bottleneck = inf;
+    for child = instance.Components
+        if child.hasValue('MyProfile.Stereotype.throughput')
+           v = child.getValue('MyProfile.Stereotype.throughput');
+           if v > 0 && v < bottleneck, bottleneck = v; end
+        end
+    end
+    if isfinite(bottleneck)
+        instance.setValue('MyProfile.Stereotype.throughput', bottleneck);
+    end
+end
+
+% Mean (e.g. automation level, utilization)
+vals = [];
+for child = instance.Components
+    if child.hasValue(propPath)
+       vals(end+1) = child.getValue(propPath); %#ok<AGROW>
+    end
+end
+if ~isempty(vals)
+    instance.setValue(propPath, mean(vals));
+end
+```
+
+### What PostOrder rollup implies about the design model
+
+PostOrder **overwrites** a parent's profile estimate with the sum (or min,
+mean, …) of its children. If the children are an incomplete breakdown of the
+parent (e.g. you modelled a `CookingStation` with `Pot`, `Stirrer`, and
+`Heater` subcomponents, but the station also includes a chassis/plumbing/
+wiring that isn't modelled), the rollup total will be **lower** than the
+parent's original estimate. That discrepancy is a useful signal: either
+complete the decomposition, or add a "balance" sub-part, or deliberately
+treat the parent as a leaf by not giving it subcomponents at all. Do not try
+to "protect" the parent estimate by skipping aggregation — that defeats the
+purpose.
 
 ---
 
-## Roll-Up Skeleton
+## Driver skeleton
 
 ```matlab
 function runAnalysis()
-    rootDir     = fileparts(fileparts(mfilename('fullpath')));
-    reqDir      = fullfile(rootDir, 'requirements');
-    archDir     = fullfile(rootDir, 'architecture');
-    analysisDir = fullfile(rootDir, 'analysis');
-    profileName = 'MySystemProfile';
+    proj        = currentProject();
+    reqDir      = fullfile(proj.RootFolder, 'requirements');
+    archDir     = fullfile(proj.RootFolder, 'architecture');
+    analysisDir = fullfile(proj.RootFolder, 'analysis');
+    profileName = 'MyProfile';
     modelName   = 'MySystem';
+    prefix      = [profileName, '.Stereotype.'];
 
-    % Read system-level caps from requirements — keeps limits out of the script
     slreq.clear();
     srSet = slreq.open(fullfile(reqDir, 'SystemRequirements.slreqx'));
-    cap = parseBudgetValue(srSet, 'SR-SYS-014', 'W');
+    capPower = parseBudgetValue(srSet, 'SR-SYS-014', 'W');
 
     addpath(archDir);
     model    = systemcomposer.openModel(modelName);
     arch     = model.Architecture;
     instance = instantiate(arch, profileName, 'MyAnalysis');
 
-    prefix  = [profileName, '.ComponentProperties.'];
-    nComp   = numel(instance.Components);
-    names   = cell(nComp, 1);
-    values  = zeros(nComp, 1);
+    iterate(instance, 'PostOrder', @MySystemRollupAnalysis);
 
-    for i = 1:nComp
-        ci       = instance.Components(i);
-        names{i} = ci.Name;
-        values(i) = getValue(ci, [prefix, 'PropertyA']);
-        setValue(ci, [prefix, 'ComputedMargin'], cap/nComp - values(i));
+    % After iterate, every parent (including the top-level architecture's
+    % direct children) has aggregated values. Read them straight off.
+    totPower = 0;
+    for c = instance.Components
+        totPower = totPower + c.getValue([prefix, 'power']);
     end
 
-    total  = sum(values);
-    margin = cap - total;
-    fprintf('Total: %.1f / %.1f  (margin %.1f)\n', total, cap, margin);
+    fprintf('Total power: %.1f / %.1f W  (margin %.1f)\n', ...
+        totPower, capPower, capPower - totPower);
 
     save(instance, fullfile(analysisDir, 'MyAnalysis.mat'));
     fprintf('Open: systemcomposer.analysis.openViewer(''MyAnalysis'')\n');
@@ -108,28 +161,70 @@ end
 
 ---
 
-## Property Cap Conventions
+## API notes
 
-Store system-level limits in requirements, not in the analysis script:
+- `getValue(instance, 'Profile.Stereotype.prop')` returns a **double** — no
+  `str2double` wrapper needed (differs from `getPropertyValue` on the design
+  model)
+- `setValue(...)` writes into the analysis instance only — the design model
+  is unchanged
+- `hasValue(...)` — **always** guard with this in the analysis function,
+  because not every component necessarily has the stereotype applied
+- `instance.Components` returns direct children; use `iterate` to descend
+- Save the instance to `analysis/`, not `architecture/`. `save(instance, path)`
+  writes a `.mat`; the Analysis Viewer opens by instance **name**, not path:
+  `systemcomposer.analysis.openViewer('MyAnalysis')`
+
+---
+
+## Declaring computed properties on the stereotype
+
+Any property the analysis writes with `setValue` must exist on the stereotype
+(declared in `buildMyModel.m`). For pure rollups over an existing property
+(mass, power, …) no extra declaration is needed — the analysis just
+overwrites the parent's value. For **derived** values (computed margin, FoM,
+utilization), add a separate property:
+
+```matlab
+addProperty(st, 'power',          Type="double", Units="W", DefaultValue="0");
+addProperty(st, 'computedMargin', Type="double", Units="W", DefaultValue="0"); % written by analysis
+```
+
+---
+
+## Property caps belong in requirements
+
+Keep system-level limits in the requirements set, not in the analysis script:
 
 ```
 SR-SYS-014: "The system shall not exceed 450 W total power consumption."
 SR-SYS-015: "The system shall not exceed 35 kg total mass."
 ```
 
-The `parseBudgetValue` helper above reads these automatically using the phrase
+`parseBudgetValue` above reads these automatically using the phrase
 **"not exceed X \<unit\>"**. As long as requirements follow this pattern, the
-script stays in sync with the requirements.
+script stays in sync.
 
 ---
 
-## Common Analysis Types
+## Common analysis types
 
 | Type | Approach |
 |---|---|
-| Roll-up sum | `sum(values)` vs. system cap from requirements |
-| Per-component margin | `budget_i - estimate_i`, written back via `setValue` |
-| Sensitivity | Vary one estimate, replot system-level margin |
-| Design alternatives | Two instantiations with different property sets |
-| Pareto / scatter | `plot(mass_kg, power_W)` from values array |
-| Monte Carlo | Perturb estimates array with `randn`, compute `sum` distribution |
+| Hierarchical roll-up | Analysis function + `iterate(..., 'PostOrder', @fn)` — this file's primary pattern |
+| Per-component margin | Derived-property block in the analysis function; `setValue(prop, cap_i - estimate_i)` per leaf |
+| Sensitivity | Drive `instantiate` in a loop with varied estimates; replot system-level margin |
+| Design alternatives | Two `instantiate` calls with different property sets; compare `.mat` outputs |
+| Pareto / scatter | Read arrays of per-component values (one getValue loop), `plot(mass, power)` |
+| Monte Carlo | Perturb leaf estimates with `randn` across iterations; histogram the rolled-up top-level value |
+
+---
+
+## When *not* to use the analysis-function pattern
+
+Only bypass it when the computation doesn't fit a child→parent aggregation:
+cross-component constraints (e.g. "port A's datarate must be ≥ port B's"),
+graph traversals, or analyses that need all leaf values at once (Monte Carlo,
+Pareto plots). In those cases, iterate with a custom visitor that collects
+into arrays, or do one pass with `iterate(..., 'PostOrder', @fn)` to roll up
+what can be rolled up, then a flat-loop pass for the cross-cutting logic.
