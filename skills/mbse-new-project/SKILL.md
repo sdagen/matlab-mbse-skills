@@ -142,7 +142,7 @@ Present these as a table for the user to review. Wait for approval or changes.
 
 After approval, generate `scripts/buildRequirements.m` using patterns from the `mbse-requirements` skill. The script must:
 - Delete and recreate both `.slreqx` files and their `.slmx` link files on every run
-- Create all SNs, all SRs, and Derive links from each SR back to its parent SN
+- Create all SNs, all SRs, and Derive links from each parent SN to its derived child SR(s) — `slreq.createLink(sn, sr); lnk.Type = 'Derive';` (SN is the source, SR is the destination)
 - Use `slreq.clear()` at the top
 
 ### Checkpoint

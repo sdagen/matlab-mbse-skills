@@ -21,7 +21,7 @@ Running log of approved decisions during guided MBSE project setup.
 ## Phase 1 — Requirements (approved, built)
 
 - 8 Stakeholder Needs (`SN-GS-001` … `SN-GS-008`), incl. SN-008 gravity range
-- 16 System Requirements (`SR-GS-001` … `SR-GS-016`), each with a Derive link to its parent SN
+- 16 System Requirements (`SR-GS-001` … `SR-GS-016`), each with a Derive link from its parent SN
 - 16 Derive links total
 - Budget caps (drive Phase 7 analysis): SR-011 mass ≤ 15000 kg · SR-012 power ≤ 500 kW · SR-013 cost ≤ 2,000,000 credits · SR-014 volume ≤ 400 m³
 - Gravity: SR-015 operating range 0.1 g – 12 g · SR-016 structural 12 g with FoS ≥ 1.5

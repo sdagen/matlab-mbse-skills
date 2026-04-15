@@ -93,7 +93,7 @@ req = rs.find('Id', 'SR-SYS-001');
 
 | Type | Meaning | Direction |
 |---|---|---|
-| `"Derive"` | Child derived from parent | SR (source) → SN (destination) |
+| `"Derive"` | Parent decomposes into derived child | SN (source) → SR (destination) |
 | `"Implement"` | Architecture element (or model block) implements requirement | Component/Block (source) → SR (destination) |
 | `"Verify"` | Test case verifies requirement | TC (source) → SR (destination) |
 | `"Refine"` | Requirement refined into a more specific requirement (same artifact kind, more detail). Not used for SR → architecture in this workflow. | SR (source) → SR (destination) |
@@ -104,8 +104,8 @@ req = rs.find('Id', 'SR-SYS-001');
 ## Creating Links
 
 ```matlab
-% Req-to-req derivation
-lnk = slreq.createLink(childReq, parentReq);
+% Req-to-req derivation: parent (e.g. SN) decomposes into derived child (e.g. SR)
+lnk = slreq.createLink(parentReq, childReq);
 lnk.Type = 'Derive';
 
 % Model block to req (model must be open in Simulink)
@@ -287,7 +287,7 @@ Every requirement has two directions of links:
 
 | Method | Returns | Meaning |
 |---|---|---|
-| `r.outLinks()` | Links from this req pointing outward | This req derives from a parent (Derive outLink) |
+| `r.outLinks()` | Links from this req pointing outward | This req decomposes into a derived child (Derive outLink) |
 | `r.inLinks()` | Links pointing INTO this req | Things that implement, verify, or derive from this req |
 
 ```matlab
@@ -360,19 +360,19 @@ end
 ## Link Direction Semantics
 
 ```
-SN  ──[Derive inLink]───  SR  ──[Derive outLink]──>  SN
-                  Component  ──[Implement]──>  SR    (component has outLink; req has inLink)
-                  Test case  ──[Verify]────>  SR    (test has outLink; req has inLink)
+SN  ──[Derive]──>  SR    (parent has outLink; derived child has inLink)
+        Component  ──[Implement]──>  SR    (component has outLink; req has inLink)
+        Test case  ──[Verify]────>  SR    (test has outLink; req has inLink)
 ```
 
-slreq link direction is always **source = the active artifact, destination = the
-requirement it relates to.** So:
+In this workflow link direction goes **parent/active → child/requirement-end** for all
+three types — the parent SN points at the SR it decomposes into, the architecture
+element points at the SR it implements, and the test case points at the SR it verifies.
 
+A requirement **derives from** another (parent) when it has `inLinks()` of type `Derive`.
 A requirement **is implemented by** an architecture element when it has `inLinks()` of
 type `Implement` whose source is a System Composer component (or a Simulink block).
-A requirement is **verified** when it has `inLinks()` of type `Verify`.
-A requirement **derives from** another when it has `outLinks()` of type `Derive` (this
-is the one direction-flipped case — the deriving requirement points at its parent).
+A requirement **is verified by** a test case when it has `inLinks()` of type `Verify`.
 
 ---
 

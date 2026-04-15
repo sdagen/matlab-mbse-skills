@@ -70,7 +70,8 @@ function buildRequirements()
     for i = 1:size(srSpec,1)
         sr = addReq(srSet, srSpec{i,1}, srSpec{i,2}, srSpec{i,4}, ...
             "Derived from SN-GS-" + string(srSpec{i,3}) + ".");
-        lnk = slreq.createLink(sr, sn(srSpec{i,3}));
+        % Derive link: SN (source, parent) -> SR (destination, derived child).
+        lnk = slreq.createLink(sn(srSpec{i,3}), sr);
         lnk.Type = 'Derive';
         nLinks = nLinks + 1;
     end
@@ -83,7 +84,13 @@ function buildRequirements()
     fprintf('System Requirements: %d\n', nSR);
     fprintf('Derive links       : %d\n', nLinks);
 
-    registerWithProject({snFile, srFile});
+    % StakeholderNeeds~slreqx.slmx is the link store created by slreq when
+    % Derive links are added with SN as the source. Lives next to the .slreqx.
+    registerWithProject({ ...
+        snFile, ...
+        srFile, ...
+        fullfile(reqDir, 'StakeholderNeeds~slreqx.slmx'), ...
+    });
 end
 
 function req = addReq(rs, id, summary, description, rationale)
