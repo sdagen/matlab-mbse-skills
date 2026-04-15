@@ -38,8 +38,8 @@ reruns — no state to undo.
 
 A complete MATLAB project with a `.prj` file, idempotent build scripts for each
 phase, all generated artifacts, and a single `buildAll()` entry point that rebuilds
-everything from scratch. See the [FCS example](examples/fcs/README.md) for what a
-finished project looks like.
+everything from scratch. See the [GalacticSoup example](examples/GalacticSoup/) for
+what a finished project looks like.
 
 ### Starting a guided session
 
@@ -222,9 +222,12 @@ The project provides:
 
 ---
 
-## FCS Worked Example
+## GalacticSoup Worked Example
 
-The [FCS example](examples/fcs/README.md) demonstrates every step end-to-end.
+The [GalacticSoup example](examples/GalacticSoup/) demonstrates every step end-to-end —
+an intergalactic industrial kitchen cooking, packaging, and shipping 8 soup varieties,
+built through the full RFLPV workflow. See its `DECISIONS.md` for the phase-by-phase
+interview record.
 
 ---
 

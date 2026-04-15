@@ -27,9 +27,9 @@ workflow**. Tell Claude you want to start a new MBSE project and it will:
    …) with initial estimates, idempotent build scripts for each phase, all
    artifacts, and a `buildAll()` entry point that rebuilds everything from scratch
 
-The result is a project like the [FCS example](examples/fcs/) — a full MBSE artifact
-set with requirements, architecture, allocation, analysis, and test cases all wired
-together with traceable links.
+The result is a project like the [GalacticSoup example](examples/GalacticSoup/) — a
+full MBSE artifact set with requirements, architecture, allocation, analysis, and test
+cases all wired together with traceable links.
 
 To start, just say something like:
 > *"I want to set up a new MBSE project for a [your system]"*
@@ -59,12 +59,14 @@ matlab-mbse-skills/
 │   ├── simulink-test/         Simulink Test .mldatx files (Tier 2 verification)
 │   └── system-composer/       Deep System Composer API reference
 └── examples/
-    └── fcs/                   Flight Control System — complete reference example
-        ├── FCSSystem.prj      MATLAB project (open this first)
-        ├── scripts/           All build scripts
+    └── GalacticSoup/          Intergalactic soup kitchen — complete reference example
+        ├── GalacticSoup.prj   MATLAB project (open this first)
+        ├── DECISIONS.md       Phase-by-phase record of approved decisions
+        ├── scripts/           All build scripts (buildAll, per-phase, allocation)
         ├── requirements/      SN + SR sets, TC requirements
-        ├── architecture/      SC models, interface dict, profile, analysis
-        └── verification/      (reserved — Simulink Test deferred)
+        ├── architecture/      F/L/P SC models, interface dicts, profile
+        ├── analysis/          Roll-up analysis outputs
+        └── verification/      Simulink Test artifacts
 ```
 
 The `mbse-new-project` skill drives the conversation and generates scripts; it draws
@@ -73,21 +75,18 @@ for the technical API patterns.
 
 ---
 
-## FCS Reference Example
+## GalacticSoup Reference Example
 
-The FCS example shows what a completed project looks like. Open it and run:
+The GalacticSoup example shows what a completed project looks like. Open it and run:
 
 ```matlab
-openProject('path/to/examples/fcs')
-buildFCSAll()
+openProject('examples/GalacticSoup/GalacticSoup.prj')
+buildAll()
 ```
 
 See [OVERVIEW.md](OVERVIEW.md) for a full description of the workflow, artifacts,
-and design principles.
-
-> **Note:** The FCS example is being rebuilt to reflect the current RFLPV workflow
-> (three-model architecture, F→L and L→P allocation sets). The example scripts
-> will be updated in a follow-on pass.
+and design principles, and `examples/GalacticSoup/DECISIONS.md` for the interview
+record that produced this project.
 
 ---
 
