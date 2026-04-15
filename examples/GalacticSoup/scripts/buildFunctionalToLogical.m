@@ -23,7 +23,11 @@ function buildFunctionalToLogical()
     logArch   = logModel.Architecture;
     cookFunc  = funcArch.getComponent('CookSoup').Architecture;
     cookLog   = logArch.getComponent('CookingUnit').Architecture;
-    scenario = createScenario(allocSet, 'FunctionalToLogical');
+    % Reuse the default scenario createAllocationSet auto-creates ("Scenario 1")
+    % rather than calling createScenario, which would leave the default empty
+    % and the editor would open to it.
+    scenario      = allocSet.Scenarios(1);
+    scenario.Name = 'FunctionalToLogical';
 
     % Top-level mapping
     topMap = {

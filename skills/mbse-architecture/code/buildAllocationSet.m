@@ -26,7 +26,11 @@ function buildAllocationSet(allocFile, funcModelName, physModelName, archDir)
     allocSet = systemcomposer.allocation.createAllocationSet(...
         allocSetName, funcModel, physModel);
 
-    scenario = createScenario(allocSet, 'FunctionalToPhysical');
+    % Reuse the default scenario createAllocationSet auto-creates ("Scenario 1")
+    % rather than calling createScenario, which would leave the default empty
+    % and the Allocation Editor would open to the empty scenario by default.
+    scenario      = allocSet.Scenarios(1);
+    scenario.Name = 'FunctionalToPhysical';
 
     allocate(scenario, funcArch.getComponent('FunctionA'), physArch.getComponent('ComponentX'));
     allocate(scenario, funcArch.getComponent('FunctionB'), physArch.getComponent('ComponentY'));

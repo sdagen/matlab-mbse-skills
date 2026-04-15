@@ -235,6 +235,12 @@ derived automatically by appending `'Set'` to the file base name:
 buildAllocationSet(allocFile, funcModelName, logicalModelName, archDir)
 ```
 
+**Reuse the default scenario; do not call `createScenario`.** `createAllocationSet`
+auto-creates a default scenario named `"Scenario 1"`. If you call `createScenario`
+on top of that, you get a *second* scenario and the Allocation Editor opens to the
+empty default — making it look like nothing is allocated. Instead: rename
+`allocSet.Scenarios(1)` and populate it.
+
 ---
 
 ## Phase 7: Logical-to-Physical Allocation Set

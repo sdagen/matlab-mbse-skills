@@ -16,7 +16,11 @@ function buildLogicalToPhysical()
     [~, allocBase] = fileparts(char(allocFile));
     allocSet = systemcomposer.allocation.createAllocationSet( ...
         [allocBase, 'Set'], 'GalacticSoupLogical', 'GalacticSoupPhysical');
-    scenario = createScenario(allocSet, 'LogicalToPhysical');
+    % Reuse the default scenario createAllocationSet auto-creates ("Scenario 1")
+    % rather than calling createScenario, which would leave the default empty
+    % and the editor would open to it.
+    scenario      = allocSet.Scenarios(1);
+    scenario.Name = 'LogicalToPhysical';
 
     logModel  = systemcomposer.openModel('GalacticSoupLogical');
     physModel = systemcomposer.openModel('GalacticSoupPhysical');
