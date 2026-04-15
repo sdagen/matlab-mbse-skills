@@ -1,7 +1,9 @@
 function runAnalysis()
 % RUNANALYSIS Compute roll-ups, margins, throughput bottleneck, and staffing
-% for GalacticSoup. Budget caps are read from SR-GS-011..014 at run time —
-% nothing is hard-coded.
+% for GalacticSoup. Roll-ups are computed by the GalacticSoupRollupAnalysis
+% analysis function iterated over the analysis instance in PostOrder, so every
+% parent in the hierarchy gets aggregated values (visible in the Instance
+% Viewer). Budget caps are read from SR-GS-011..014 at run time.
 
     proj        = currentProject();
     reqDir      = fullfile(proj.RootFolder, 'requirements');
@@ -9,6 +11,7 @@ function runAnalysis()
     analysisDir = fullfile(proj.RootFolder, 'analysis');
     profileName = 'GalacticSoupProfile';
     modelName   = 'GalacticSoupPhysical';
+    prefix      = [profileName, '.ComponentProperties.'];
 
     slreq.clear();
     srSet = slreq.open(fullfile(reqDir, 'SystemRequirements.slreqx'));
@@ -25,35 +28,28 @@ function runAnalysis()
     arch     = model.Architecture;
     instance = instantiate(arch, profileName, 'GalacticSoupAnalysis');
 
-    prefix = [profileName, '.ComponentProperties.'];
-    n      = numel(instance.Components);
-    names  = strings(n,1);
-    mass   = zeros(n,1);
-    volume = zeros(n,1);
-    power  = zeros(n,1);
-    cost   = zeros(n,1);
-    thru   = zeros(n,1);
-    auto   = zeros(n,1);
+    % Run the analysis function. PostOrder visits children before parents so
+    % each parent sees already-aggregated child values.
+    iterate(instance, 'PostOrder', @GalacticSoupRollupAnalysis);
 
-    for i = 1:n
-        ci        = instance.Components(i);
-        names(i)  = ci.Name;
-        mass(i)   = getValue(ci, [prefix, 'mass']);
-        volume(i) = getValue(ci, [prefix, 'volume']);
-        power(i)  = getValue(ci, [prefix, 'power']);
-        cost(i)   = getValue(ci, [prefix, 'cost']);
-        thru(i)   = getValue(ci, [prefix, 'throughput']);
-        auto(i)   = getValue(ci, [prefix, 'automationLevel']);
+    % Roll-ups now live on the top-level architecture instance
+    topComps = instance.Components;
+    totMass  = sumTop(topComps, [prefix, 'mass']);
+    totVol   = sumTop(topComps, [prefix, 'volume']);
+    totPower = sumTop(topComps, [prefix, 'power']);
+    totCost  = sumTop(topComps, [prefix, 'cost']);
+
+    % Throughput bottleneck and average automation across top-level components
+    [thruVals, autoVals] = deal([]);
+    for i = 1:numel(topComps)
+        c = topComps(i);
+        t = c.getValue([prefix, 'throughput']);
+        if t > 0, thruVals(end+1) = t; end %#ok<AGROW>
+        autoVals(end+1) = c.getValue([prefix, 'automationLevel']); %#ok<AGROW>
     end
-
-    totMass = sum(mass); totVol = sum(volume); totPower = sum(power); totCost = sum(cost);
-    avgAuto = mean(auto);
-    % Throughput bottleneck = min across producing stages (zero-throughput
-    % components like controllers/sensors are excluded)
-    bottleThru = min(thru(thru > 0));
-    % Staffing proxy: crew-equivalents needed if all top-level components ran
-    % simultaneously at full manual load. sum(1 - automationLevel).
-    crewNeeded = sum(1 - auto);
+    bottleThru = min(thruVals);
+    avgAuto    = mean(autoVals);
+    crewNeeded = sum(1 - autoVals);
 
     report = { ...
         'Mass (kg)',    totMass,  capMass,  capMass  - totMass,  totMass  <= capMass; ...
@@ -78,6 +74,13 @@ function runAnalysis()
     fprintf('Open in viewer: systemcomposer.analysis.openViewer(''GalacticSoupAnalysis'')\n');
 
     registerWithProject({fullfile(analysisDir, 'GalacticSoupAnalysis.mat')});
+end
+
+function s = sumTop(comps, prop)
+    s = 0;
+    for i = 1:numel(comps)
+        s = s + comps(i).getValue(prop);
+    end
 end
 
 function v = parseBudgetValue(srSet, reqId, unit)
