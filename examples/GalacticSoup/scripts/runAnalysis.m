@@ -73,7 +73,10 @@ function runAnalysis()
     fprintf('\nSaved: analysis/GalacticSoupAnalysis.mat\n');
     fprintf('Open in viewer: systemcomposer.analysis.openViewer(''GalacticSoupAnalysis'')\n');
 
-    registerWithProject({fullfile(analysisDir, 'GalacticSoupAnalysis.mat')});
+    registerWithProject({ ...
+        fullfile(analysisDir, 'GalacticSoupAnalysis.mat'), ...
+        fullfile(analysisDir, 'GalacticSoupRollupAnalysis.m'), ...   % analysis function lives in analysis/, not scripts/
+    });
 end
 
 function s = sumTop(comps, prop)

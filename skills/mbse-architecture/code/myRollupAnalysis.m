@@ -1,5 +1,9 @@
 function myRollupAnalysis(instance, varargin)
 % Analysis function template for the canonical System Composer roll-up pattern.
+% Save this file under the project's `analysis/` folder (not `scripts/`) — it
+% is an analysis artifact, not a build step. The project path includes
+% `analysis/`, so the driver resolves the function by name.
+%
 % Invoke from the driver with:
 %     iterate(instance, 'PostOrder', @myRollupAnalysis);
 %

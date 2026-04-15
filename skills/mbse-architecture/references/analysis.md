@@ -7,6 +7,12 @@ templates live alongside this file:
 - `code/myRollupAnalysis.m` — analysis function template (sum + min + mean blocks)
 - `code/runMyAnalysis.m` — driver skeleton (instantiate → iterate → report → save)
 
+**File placement.** The analysis function file (e.g. `myRollupAnalysis.m`) belongs in
+the project's `analysis/` folder, not `scripts/`. It's an analysis artifact (consumed
+by the driver and persisted alongside the `.mat` output), not a phase build step. The
+project path includes `analysis/`, so the function resolves by name. The driver
+script itself (`runAnalysis.m`) stays in `scripts/` like the other build steps.
+
 ---
 
 ## The canonical roll-up pattern: analysis function + iterate(PostOrder)

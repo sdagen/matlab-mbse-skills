@@ -7,6 +7,11 @@ function runMyAnalysis()
 %      parent in the hierarchy gets aggregated values (visible in the Viewer)
 %   4. Read rolled-up totals off the top-level instance
 %   5. Report margins and save for the Analysis Viewer
+%
+% Convention: the analysis function file (`myRollupAnalysis.m`) lives in the
+% project's `analysis/` folder, NOT `scripts/`. It's an analysis artifact, not
+% a build step. The project path includes `analysis/`, so the function resolves
+% by name. This driver registers it with the project alongside the .mat output.
 
     proj        = currentProject();
     reqDir      = fullfile(proj.RootFolder, 'requirements');
@@ -50,6 +55,15 @@ function runMyAnalysis()
     save(instance, fullfile(analysisDir, 'MyAnalysis.mat'));
     fprintf('\nSaved: analysis/MyAnalysis.mat\n');
     fprintf('Open: systemcomposer.analysis.openViewer(''MyAnalysis'')\n');
+
+    % Register both the analysis output and the analysis function file with
+    % the project. The function file lives in analysis/, not scripts/.
+    if ~isempty(matlab.project.currentProject)
+        registerWithProject({ ...
+            fullfile(analysisDir, 'MyAnalysis.mat'), ...
+            fullfile(analysisDir, 'myRollupAnalysis.m'), ...
+        });
+    end
 end
 
 function s = sumTop(comps, prop)
