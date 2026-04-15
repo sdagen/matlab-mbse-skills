@@ -16,7 +16,8 @@ See the `system-composer` skill for the full System Composer API reference
 (interfaces, ports, connections, auto-layout). This skill covers the
 MBSE-specific decisions and patterns layered on top, plus allocation and analysis.
 
-For analysis details see `references/analysis.md` in this skill folder.
+For analysis details see `references/analysis.md` (prose) plus
+`code/myRollupAnalysis.m` and `code/runMyAnalysis.m` (templates).
 
 ---
 
@@ -310,4 +311,5 @@ this skill folder when the user needs to set up quantitative analysis
 aggregation in MATLAB — the analysis-function approach writes rolled-up
 values to every parent in the hierarchy so the Instance Viewer is useful at
 every level. Details, non-sum aggregations (min/mean), and when to bypass
-the pattern: `references/analysis.md`.
+the pattern: `references/analysis.md`. Runnable templates:
+`code/myRollupAnalysis.m` (analysis function) and `code/runMyAnalysis.m` (driver).
