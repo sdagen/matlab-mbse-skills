@@ -1,5 +1,7 @@
 function buildFunctionalAllocation()
-% BUILDFUNCTIONALALLOCATION Create SR -> Function Refine links for GalacticSoup.
+% BUILDFUNCTIONALALLOCATION Create Function -> SR Implement links for GalacticSoup.
+%   slreq Implement links go from the implementer (architecture element) to the
+%   requirement implemented, so the source is a Function and the destination is an SR.
 %   Idempotent within the functional model scope. SR links may target either
 %   top-level functions or sub-functions inside CookSoup (ExecuteRecipe,
 %   ControlHeating, StirContents, ApplyHeat).
@@ -17,7 +19,7 @@ function buildFunctionalAllocation()
     funcArch  = funcModel.Architecture;
     cookArch  = funcArch.getComponent('CookSoup').Architecture;
 
-    removeRefineLinksToModel(srSet, 'GalacticSoupFunctional');
+    removeImplementLinksToModel(srSet, 'GalacticSoupFunctional');
 
     % Helper: resolve name to a component (top-level or CookSoup sub-function)
     cookSubs = {'ApplyHeat','ControlHeating','StirContents','ExecuteRecipe'};
@@ -51,13 +53,16 @@ function buildFunctionalAllocation()
             else
                 comp = funcArch.getComponent(name);
             end
-            lnk      = slreq.createLink(req, comp);
-            lnk.Type = 'Refine';
+            lnk      = slreq.createLink(comp, req);
+            lnk.Type = 'Implement';
             nLinks   = nLinks + 1;
         end
     end
 
     slreq.saveAll();
-    fprintf('SR -> Function Refine links: %d\n', nLinks);
-    registerWithProject({fullfile(archDir, 'GalacticSoupFunctional.slx')});
+    fprintf('Function -> SR Implement links: %d\n', nLinks);
+    registerWithProject({ ...
+        fullfile(archDir, 'GalacticSoupFunctional.slx'), ...
+        fullfile(archDir, 'GalacticSoupFunctional~mdl.slmx'), ...   % link store created by slreq when linking into the model
+    });
 end

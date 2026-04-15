@@ -5,7 +5,7 @@ description: >
   the Requirements Toolbox (slreq). Covers creating and populating requirement sets,
   derivation links, test case requirements, verification coverage, reading and tracing
   links across requirement sets and models, checking link health, allocating requirements
-  to components (Refine links), and building traceability reports. Trigger when the user
+  to components (Implement links), and building traceability reports. Trigger when the user
   asks about slreq API, slreqx files, slmx link files, outLinks/inLinks, traceability
   matrices, coverage analysis, broken links, or mapping requirements to architecture
   components. Use proactively for any requirements or traceability task.
@@ -94,9 +94,9 @@ req = rs.find('Id', 'SR-SYS-001');
 | Type | Meaning | Direction |
 |---|---|---|
 | `"Derive"` | Child derived from parent | SR (source) → SN (destination) |
-| `"Refine"` | Requirement allocated to architecture component | SR (source) → Component (destination) |
+| `"Implement"` | Architecture element (or model block) implements requirement | Component/Block (source) → SR (destination) |
 | `"Verify"` | Test case verifies requirement | TC (source) → SR (destination) |
-| `"Implement"` | Model block implements requirement | Block (source) → SR (destination) |
+| `"Refine"` | Requirement refined into a more specific requirement (same artifact kind, more detail). Not used for SR → architecture in this workflow. | SR (source) → SR (destination) |
 | `"Relate"` | Informal relationship | Bidirectional |
 
 ---
@@ -118,6 +118,22 @@ lnk.Type = 'Verify';
 
 slreq.saveAll();   % always call after creating cross-artifact links
 ```
+
+### Side effect: `{modelName}~mdl.slmx` link store
+
+The first time you create a link **into** a Simulink/System Composer model (component,
+subsystem, or block as either source or destination), slreq writes a `{modelName}~mdl.slmx`
+file next to the `.slx`. This file stores the link data and is required for the links
+to survive a reload. After creating links into a model, **always** add this file to the
+MATLAB project alongside the `.slx`:
+
+```matlab
+addFile(proj, fullfile(archDir, 'MyModel.slx'));
+addFile(proj, fullfile(archDir, 'MyModel~mdl.slmx'));   % link store, created automatically
+```
+
+Forgetting to register the `.slmx` causes project file-system checks to fail and the
+traceability links won't travel when the project is shared.
 
 ---
 
@@ -271,7 +287,7 @@ Every requirement has two directions of links:
 
 | Method | Returns | Meaning |
 |---|---|---|
-| `r.outLinks()` | Links from this req pointing outward | This req derives from / refines something |
+| `r.outLinks()` | Links from this req pointing outward | This req derives from a parent (Derive outLink) |
 | `r.inLinks()` | Links pointing INTO this req | Things that implement, verify, or derive from this req |
 
 ```matlab
@@ -345,14 +361,18 @@ end
 
 ```
 SN  ──[Derive inLink]───  SR  ──[Derive outLink]──>  SN
-                           SR  ──[Refine outLink]──>  Component
-                      Block  ──[Implement]──>  SR    (block has outLink; req has inLink)
+                  Component  ──[Implement]──>  SR    (component has outLink; req has inLink)
                   Test case  ──[Verify]────>  SR    (test has outLink; req has inLink)
 ```
 
-A requirement is **implemented** when it has `inLinks()` of type `Implement`.
+slreq link direction is always **source = the active artifact, destination = the
+requirement it relates to.** So:
+
+A requirement **is implemented by** an architecture element when it has `inLinks()` of
+type `Implement` whose source is a System Composer component (or a Simulink block).
 A requirement is **verified** when it has `inLinks()` of type `Verify`.
-A requirement **derives from** another when it has `outLinks()` of type `Derive`.
+A requirement **derives from** another when it has `outLinks()` of type `Derive` (this
+is the one direction-flipped case — the deriving requirement points at its parent).
 
 ---
 

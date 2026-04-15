@@ -1,5 +1,7 @@
 function buildPhysicalAllocation()
-% BUILDPHYSICALALLOCATION Create SR -> Physical Refine links for GalacticSoup.
+% BUILDPHYSICALALLOCATION Create Physical -> SR Implement links for GalacticSoup.
+%   slreq Implement links go from the implementer (architecture element) to the
+%   requirement implemented, so the source is a Physical component and the destination is an SR.
 %   Idempotent within the physical model scope. Use for hardware-specific,
 %   environmental, and structural requirements, plus system-level budget caps
 %   (mass/volume/power/cost) that roll up across components.
@@ -16,7 +18,7 @@ function buildPhysicalAllocation()
     physModel = systemcomposer.openModel('GalacticSoupPhysical');
     physArch  = physModel.Architecture;
 
-    removeRefineLinksToModel(srSet, 'GalacticSoupPhysical');
+    removeImplementLinksToModel(srSet, 'GalacticSoupPhysical');
 
     allTop = { 'CryoPantry','AugerDispenser','RoboPrepStation','PrecisionScale', ...
                'CookingStation','QualitySensorSuite','SealingLine','LoaderArm', ...
@@ -40,13 +42,16 @@ function buildPhysicalAllocation()
         req = srSet.find('Id', allocation{i,1});
         for j = 1:numel(allocation{i,2})
             comp     = physArch.getComponent(allocation{i,2}{j});
-            lnk      = slreq.createLink(req, comp);
-            lnk.Type = 'Refine';
+            lnk      = slreq.createLink(comp, req);
+            lnk.Type = 'Implement';
             nLinks   = nLinks + 1;
         end
     end
 
     slreq.saveAll();
-    fprintf('SR -> Physical Refine links: %d\n', nLinks);
-    registerWithProject({fullfile(archDir, 'GalacticSoupPhysical.slx')});
+    fprintf('Physical -> SR Implement links: %d\n', nLinks);
+    registerWithProject({ ...
+        fullfile(archDir, 'GalacticSoupPhysical.slx'), ...
+        fullfile(archDir, 'GalacticSoupPhysical~mdl.slmx'), ...   % link store created by slreq when linking into the model
+    });
 end

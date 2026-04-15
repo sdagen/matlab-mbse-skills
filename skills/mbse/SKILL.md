@@ -37,8 +37,8 @@ Phase 5   Physical Architecture       MyPhysical.slx + PhysicalInterfaces.sldd
             |  (allocated via)
 Phase 6   F→L Allocation Set          MyFunctionalToLogical.mldatx
 Phase 7   L→P Allocation Set          MyLogicalToPhysical.mldatx
-            |  (refines)
-Phase 8   Requirements Allocation     SR→Function (mandatory), SR→Logical, SR→Physical Refine links
+            |  (implemented by)
+Phase 8   Requirements Allocation     Function→SR (mandatory), Logical→SR, Physical→SR Implement links
             |  (quantifies)
 Phase 9   Analysis                    optional — roll-up, trade study, sensitivity
             |  (verifies)
@@ -56,7 +56,7 @@ Phase 10  Verification                TC requirements + Simulink Test file
 | 3–5 | `mbse-architecture` | Functional, logical, and physical models; three-level interface dictionaries; stereotypes |
 | — | `system-composer` | Deep System Composer API reference (ports, connections, profiles) |
 | 6–7 | `mbse-architecture` | F→L and L→P allocation sets |
-| 8 | `mbse-architecture` | Requirements → component Refine links (L or P level) |
+| 8 | `mbse-architecture` | Requirements → component Implement links (L or P level) |
 | 9 | `mbse-architecture` | Quantitative analysis, roll-up, margins |
 | 10 (TC reqs) | `simulink-requirements` | TC requirement sets, Verify links, coverage report |
 | 10 (Simulink Test) | `simulink-test` | `.mldatx` test files, test suites, system under test |

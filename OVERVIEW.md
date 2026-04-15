@@ -70,7 +70,7 @@ the others provide the technical API patterns it draws on.
 
 The MBSE workflow follows the RFLPV methodology (Requirements, Functions, Logical,
 Physical, Verification). Each phase is a separate idempotent build script.
-Requirements-to-architecture Refine links are created immediately after each
+Requirements-to-architecture Implement links are created immediately after each
 architecture layer is built (via per-phase allocation scripts), so traceability
 is reviewable at every step rather than deferred to a single late-stage pass.
 
@@ -88,12 +88,12 @@ is reviewable at every step rather than deferred to a single late-stage pass.
   must *do* to satisfy it — producing an SR → Function derivation table before any
   model is built. Every SR must map to at least one function; functions with no SRs
   are flagged as orphaned or undocumented. This table seeds the mandatory SR→Function
-  Refine links created by the paired `buildFunctionalAllocation.m` script below.
+  Implement links created by the paired `buildFunctionalAllocation.m` script below.
 - Build a System Composer model for the **logical functions** of the system,
   independent of any physical implementation
 - Create a **functional interface dictionary** with abstract interfaces —
   semantic names and flows, no physical units or implementation detail
-- Create **SR → Function Refine links** (mandatory: every SR traces to at least
+- Create **Function → SR Implement links** (mandatory: every SR traces to at least
   one function) in a paired allocation script generated and run right after the
   model — so requirements traceability is immediately reviewable
 - Artifacts: `Functional.slx`, `FunctionalInterfaces.sldd`
@@ -107,7 +107,7 @@ is reviewable at every step rather than deferred to a single late-stage pass.
   `ActuationUnit` — no hardware brand names or part numbers
 - Create a **logical interface dictionary** with typed, semantically-named fields
   but without datasheet-level specifics (no voltage ranges, baud rates, tolerances)
-- Create **SR → Logical Refine links** for non-functional requirements (timing,
+- Create **Logical → SR Implement links** for non-functional requirements (timing,
   performance, safety, security) or requirements specific to a logical solution
   role, in a paired allocation script
 - Artifacts: `Logical.slx`, `LogicalInterfaces.sldd`
@@ -124,7 +124,7 @@ is reviewable at every step rather than deferred to a single late-stage pass.
   apply it to all components with initial estimates. The profile is created and
   applied at the end of the architecture script so estimates travel with the
   model and survive every rebuild.
-- Create **SR → Physical Refine links** for hardware-specific requirements
+- Create **Physical → SR Implement links** for hardware-specific requirements
   (connector specs, EMC ratings, operating temperature, packaging, installation)
   and for system-level budget caps on physical properties (mass, volume, power,
   cost) that roll up across components, in a paired allocation script
@@ -158,10 +158,10 @@ is reviewable at every step rather than deferred to a single late-stage pass.
 - Artifact: `TestCases.slreqx`
 - Script: `buildTestCases.m`
 
-> **Note on requirements allocation.** SR → Function / Logical / Physical Refine
+> **Note on requirements allocation.** Function / Logical / Physical → SR Implement
 > links are not a separate phase. They are generated alongside each architecture
 > layer (in Phases 2, 3, and 4) by paired per-phase allocation scripts that share
-> a `removeRefineLinksToModel` helper. Each script cleans up only its own
+> a `removeImplementLinksToModel` helper. Each script cleans up only its own
 > model-scoped links, so they can be re-run in any order without wiping each
 > other out.
 
@@ -190,9 +190,9 @@ Every artifact is traceable up and down the chain:
 Requirements links:
   Stakeholder Need  (StakeholderNeeds.slreqx)
       └─[Derive]─▶  System Requirement  (SystemRequirements.slreqx)
-                        ├─[Refine]─▶  Function           (Functional.slx)   mandatory
-                        ├─[Refine]─▶  Logical Component  (Logical.slx)      non-functional reqs
-                        ├─[Refine]─▶  Physical Component (Physical.slx)       hardware reqs
+                        ◀─[Implement]──  Function           (Functional.slx)   mandatory
+                        ◀─[Implement]──  Logical Component  (Logical.slx)      non-functional reqs
+                        ◀─[Implement]──  Physical Component (Physical.slx)       hardware reqs
                         └─[Verify]─▶  TC Requirement     (TestCases.slreqx)
                                           └─[Verify]─▶  Simulink Test Case  (Tier 2, if model exists)
 

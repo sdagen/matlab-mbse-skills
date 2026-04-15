@@ -43,7 +43,7 @@ my-system/
 
 - **Architecture rebuilds break allocation links.** `slreq.createLink` stores
   component references by Simulink SID. If you rebuild the model, SIDs change
-  and Refine allocation links become stale. Always rebuild allocation after
+  and Implement allocation links become stale. Always rebuild allocation after
   rebuilding the architecture model.
 
 - **Profile setup belongs in the architecture script.** Create and apply the
@@ -169,7 +169,7 @@ SR-003   Surface actuator response time   CommandControlSurfaces
 
 Every SR must map to at least one function. If a function has no SRs, flag it —
 it is either orphaned or covering an undocumented need. This table becomes the
-SR → Function Refine link table in Phase 7.
+Function → SR Implement link table in Phase 7.
 
 Wait for approval on the SR → Function mapping before proceeding.
 
@@ -191,19 +191,20 @@ After approval, generate `scripts/buildFunctional.m` using patterns from the `mb
 - `modelName` must be a double-quoted MATLAB string for `char(modelName) + ".slx"` to work
 - Re-fetch interfaces after `dict.save()` before calling `setInterface`
 
-Immediately after, also generate and run `scripts/buildFunctionalAllocation.m` and the shared helper `scripts/removeRefineLinksToModel.m`:
-- `removeRefineLinksToModel(srSet, modelBasename)` iterates SR outLinks and removes only Refine links whose destination `getReferenceInfo().artifact` matches the given model basename — used by all three per-phase allocation scripts so each cleans up only its own links
-- `buildFunctionalAllocation.m` calls this helper (scoped to the functional model), then creates SR → Function Refine links from the Phase 2 analysis table
+Immediately after, also generate and run `scripts/buildFunctionalAllocation.m` and the shared helper `scripts/removeImplementLinksToModel.m`:
+- `removeImplementLinksToModel(srSet, modelBasename)` iterates SR inLinks (Implement links go arch→req, so from a requirement's perspective they are inLinks) and removes only Implement links whose **source** `lnk.source().artifact` matches the given model basename — used by all three per-phase allocation scripts so each cleans up only its own links
+- `buildFunctionalAllocation.m` calls this helper (scoped to the functional model), then creates Function → SR Implement links from the Phase 2 analysis table — `slreq.createLink(funcComp, req); lnk.Type = 'Implement'` (component is the source, requirement is the destination)
+- After creating links, register **both** the model `.slx` AND the `{modelName}~mdl.slmx` link store file with the project. slreq creates `~mdl.slmx` automatically the first time you create a link into a Simulink/SC model — it lives next to the `.slx` and stores the link data. Without registering it, project file checks fail and the traceability won't travel with the project
 - Calls `slreq.saveAll()` at the end
 - Includes a header comment noting: re-run this whenever `buildFunctional.m` is re-run (SIDs change on rebuild); this script is superseded by `buildAllocation.m` in Phase 7
 
-**Apply the same pattern in Phase 3 and Phase 4:** after `buildLogical.m`, generate and run `buildLogicalAllocation.m` (SR → Logical Refine links for non-functional reqs); after `buildPhysical.m`, generate and run `buildPhysicalAllocation.m` (SR → Physical Refine links for hardware-specific reqs and budget caps). Propose the SR → Logical and SR → Physical mapping tables for user approval before each. All three allocation scripts use the same `removeRefineLinksToModel` helper so they can run in any order without wiping each other out.
+**Apply the same pattern in Phase 3 and Phase 4:** after `buildLogical.m`, generate and run `buildLogicalAllocation.m` (Logical → SR Implement links for non-functional reqs); after `buildPhysical.m`, generate and run `buildPhysicalAllocation.m` (Physical → SR Implement links for hardware-specific reqs and budget caps). Propose the SR → Logical and SR → Physical mapping tables for user approval before each. All three allocation scripts use the same `removeImplementLinksToModel` helper so they can run in any order without wiping each other out.
 
 This gives the user immediate traceability at each architecture layer. Phase 7's `buildAllocation.m` will absorb and replace all three per-phase scripts.
 
 ### Checkpoint
 
-Show: function count, interface count, connection count, SR→Function Refine link count. Ask user to confirm the functional model and traceability look right.
+Show: function count, interface count, connection count, Function→SR Implement link count. Ask user to confirm the functional model and traceability look right.
 
 ---
 
@@ -399,7 +400,7 @@ must trace to at least one function. Wait for approval before generating.
 ### Generate
 
 After approval, generate `scripts/buildAllocation.m` using patterns from the `mbse-architecture` skill:
-- Remove existing Refine links before recreating (idempotent)
+- Remove existing Implement links before recreating (idempotent)
 - Open all three models: `MyFunctional`, `MyLogical`, `MySystem`
 - Use `fileparts(fileparts(mfilename('fullpath')))` for the project root — never `'..'` in paths passed to System Composer
 - `addpath(archDir)` then `openModel` by model name, not full path
@@ -583,7 +584,7 @@ Project: <Name>  (<root folder>)
     └── buildSimulinkTests.m            (if Phase 10 ran)
 
 Traceability:
-  SN ─[Derive]─▶ SR ─[Refine]─▶ LogicalComponent  (or PhysicalComponent)
+  SN ─[Derive]─▶ SR ◀─[Implement]─ LogicalComponent  (or PhysicalComponent)
                                         ▲
                                     [L→P Allocate]
                                         │

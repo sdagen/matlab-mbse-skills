@@ -220,7 +220,7 @@ Three distinct allocation steps:
 |---|---|---|
 | 6 | Functional → Logical allocation set | `systemcomposer.allocation` |
 | 7 | Logical → Physical allocation set | `systemcomposer.allocation` |
-| 8 | Requirements → Component Refine links | `slreq.createLink` |
+| 8 | Requirements → Component Implement links | `slreq.createLink` |
 
 ---
 
@@ -261,14 +261,34 @@ systemcomposer.allocation.editor('path/to/MyAllocation.mldatx')
 
 ---
 
-## Phase 8: Requirements → Architecture Refine Links
+## Phase 8: Architecture → Requirements Implement Links
 
-`Refine` links connect system requirements to the architecture artifacts responsible
-for satisfying them. This is distinct from the allocation sets (Phases 6–7,
-`systemcomposer.allocation`) — Refine links live in the requirements toolbox and
-are queryable via `slreq`.
+`Implement` links connect architecture artifacts to the system requirements they
+realize ("requirement → implemented by → architectural element"). Per slreq convention
+the link source is the **architecture element** and the destination is the **requirement**:
 
-Three types of Refine links are created, in order:
+```matlab
+lnk      = slreq.createLink(component, req);   % source = component, destination = requirement
+lnk.Type = 'Implement';
+```
+
+From the requirement's perspective these are `inLinks()`, not outLinks. The cleanup
+helper for idempotent rebuilds iterates `req.inLinks()` and filters by source artifact.
+
+**Register the link-store file with the project.** The first time slreq creates a link
+into a model, it auto-generates `{modelName}~mdl.slmx` next to the `.slx` to store the
+link data. Every allocation script must register this file with the project (alongside
+the `.slx`), or project checks will fail and the traceability won't travel with the
+project.
+
+This is distinct from the allocation sets (Phases 6–7, `systemcomposer.allocation`) —
+Implement links live in the requirements toolbox and are queryable via `slreq`.
+
+`Refine` links remain a valid slreq link type, but are reserved for refining a
+requirement into more specific requirements (same artifact kind, more detail). Do **not**
+use Refine for requirement → architecture in this workflow.
+
+Three sets of Implement links are created, in order:
 
 **SR → Function (mandatory):** Every SR must trace to at least one function in the
 functional architecture. This closes the loop between requirements and the functional

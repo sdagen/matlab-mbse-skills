@@ -31,10 +31,10 @@ Running log of approved decisions during guided MBSE project setup.
 
 - **11 functions:** StoreIngredients, DispenseIngredients, ProcessProduce, PortionIngredients, CookSoup, InspectQuality, PackageSoup, ShipSoup, TrackInventory, MonitorEnvironment, OrchestrateOperations
 - **11 interfaces** (abstract, no physical units): RecipeCommand, RawIngredients, PreparedProduce, PortionedIngredients, CookedSoup, InspectedSoup, PackagedBatch, Manifest, InventoryState, EnvironmentState, SystemStatus
-- **23 connections**; **32 SR → Function Refine links** (every SR covered, no orphan functions)
+- **23 connections**; **32 Function → SR Implement links** (every SR covered, no orphan functions)
 - Added `ProcessProduce` and `PortionIngredients` at user's request (chopping + weighing; gravity-sensitive)
 - Artifacts: `architecture/GalacticSoupFunctional.slx`, `GalacticSoupFunctionalInterfaces.sldd`
-- Shared helper: `scripts/removeRefineLinksToModel.m` (used by all three per-phase allocation scripts)
+- Shared helper: `scripts/removeImplementLinksToModel.m` (used by all three per-phase allocation scripts)
 - **Note:** `connect(arch, src, dst)` silently dispatches to Control System Toolbox — always use `connect(src, dst)`. The port returned from `addPort(comp.Architecture,…)` is the inside-boundary port; for external `connect()`, use the outside-facing port via `comp.getPort(name)`.
 
 ## Phase 2b — CookSoup decomposition (user request)
@@ -48,14 +48,14 @@ Added one more level of decomposition inside `CookSoup` (functional) and mirrore
 | `StirContents` | `StirringMechanism` |
 | `ExecuteRecipe` | `RecipeExecutor` |
 
-4 new interfaces for internal wiring: `HeatSetpoint`, `StirCommand`, `HeatCommand`, `Temperature`. SR-001/002 retargeted to `ExecuteRecipe`, SR-008 to `ControlHeating`, SR-015 split to `StirContents`/`ControlHeating`. 33 SR → Function Refine links after retargeting.
+4 new interfaces for internal wiring: `HeatSetpoint`, `StirCommand`, `HeatCommand`, `Temperature`. SR-001/002 retargeted to `ExecuteRecipe`, SR-008 to `ControlHeating`, SR-015 split to `StirContents`/`ControlHeating`. 33 Function → SR Implement links after retargeting.
 
 ## Phase 3 — Logical architecture (approved, built)
 
 - **11 logical components:** StorageUnit, DispensingUnit, PrepProcessor, PortioningUnit, CookingUnit (decomposed), QualitySensingUnit, PackagingUnit, ShippingUnit, InventoryTracker, EnvironmentSensor, ControlUnit
 - **15 interfaces** (mirrors functional + 4 CookingUnit internals; with some extra typed fields at this level — `priority`, `quantities`, `cutSize`, `masses`, `temperature`, `contamLevel`, `sealStatus`, `carrier`, `reorderFlags`, `humidity`, `alarms`, `operatorLoad`)
 - **23 top-level connections + 9 inner** inside CookingUnit
-- **21 SR → Logical Refine links** covering non-functional/performance/role-specific (SR-002, 003, 004, 006, 007, 008, 010, 015)
+- **21 Logical → SR Implement links** covering non-functional/performance/role-specific (SR-002, 003, 004, 006, 007, 008, 010, 015)
 - Artifacts: `architecture/GalacticSoupLogical.slx`, `GalacticSoupLogicalInterfaces.sldd`
 
 ## Phase 4 — Physical architecture + profile (approved, built)
@@ -66,7 +66,7 @@ Added one more level of decomposition inside `CookSoup` (functional) and mirrore
 - **23 top-level + 9 inner connections**
 - **Profile `GalacticSoupProfile`** with stereotype `ComponentProperties` (mass kg, volume m³, power kW, cost credits, throughput bowls/hour, automationLevel 0–1) applied to all 11 top-level components with initial estimates
 - **Roll-ups vs budgets:** mass 13 300 / 15 000 kg ✓ · volume 211.2 / 400 m³ ✓ · power 449.5 / 500 kW ✓ · cost 1 720 000 / 2 000 000 cr ✓ · throughput bottleneck 220 / 200 bowls/h ✓ · avg automation 0.91 / 0.80 ✓
-- **65 SR → Physical Refine links** (budget caps SR-011..014 + structural SR-016 mapped to every top-level component since each contributes to the roll-up)
+- **65 Physical → SR Implement links** (budget caps SR-011..014 + structural SR-016 mapped to every top-level component since each contributes to the roll-up)
 - Artifacts: `architecture/GalacticSoupPhysical.slx`, `GalacticSoupPhysicalInterfaces.sldd`, `GalacticSoupProfile.xml`
 - **Note:** `profile.save()` requires a char path, not a string — wrap `archDir` with `char()`.
 

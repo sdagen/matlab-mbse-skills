@@ -20,7 +20,7 @@ workflow**. Tell Claude you want to start a new MBSE project and it will:
 3. **Generate and run each build script** — one phase at a time, showing you the
    output and asking you to confirm before moving on. Each of the three architecture
    phases (Functional, Logical, Physical) is paired with its own allocation script
-   that creates SR → architecture Refine links immediately, so traceability is
+   that creates architecture → SR Implement links immediately, so traceability is
    reviewable at every layer instead of deferred to a late-stage consolidation pass
 4. **Produce a complete, runnable MATLAB project** — with a `.prj` file, a stereotype
    profile capturing component engineering properties (mass, volume, power, cost,
@@ -41,7 +41,7 @@ To start, just say something like:
 | Toolbox | Used for |
 |---|---|
 | System Composer | Architecture modeling, profiles, stereotypes, analysis instances |
-| Requirements Toolbox | Requirement sets, derivation/refinement/verification links |
+| Requirements Toolbox | Requirement sets, derivation/implementation/verification links |
 
 MATLAB R2023a or later recommended. The FCS example was developed and tested on R2025b.
 
@@ -96,9 +96,9 @@ record that produced this project.
 Requirements links:
   Stakeholder Need  (StakeholderNeeds.slreqx)
       └─[Derive]─▶  System Requirement  (SystemRequirements.slreqx)
-                        ├─[Refine]─▶  Function           (Functional.slx)   mandatory
-                        ├─[Refine]─▶  Logical Component  (Logical.slx)      non-functional reqs
-                        ├─[Refine]─▶  Physical Component (Physical.slx)       hardware reqs
+                        ◀─[Implement]──  Function           (Functional.slx)   mandatory
+                        ◀─[Implement]──  Logical Component  (Logical.slx)      non-functional reqs
+                        ◀─[Implement]──  Physical Component (Physical.slx)       hardware reqs
                         └─[Verify]─▶  TC Requirement     (TestCases.slreqx)
                                           └─[Verify]─▶  Simulink Test Case  (if behavioral model exists)
 

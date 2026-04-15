@@ -1,5 +1,7 @@
 function buildLogicalAllocation()
-% BUILDLOGICALALLOCATION Create SR -> Logical Refine links for GalacticSoup.
+% BUILDLOGICALALLOCATION Create Logical -> SR Implement links for GalacticSoup.
+%   slreq Implement links go from the implementer (architecture element) to the
+%   requirement implemented, so the source is a Logical element and the destination is an SR.
 %   Idempotent within the logical model scope. Use for non-functional reqs
 %   (timing, performance, safety) or requirements specific to a logical role.
 %   May target sub-roles inside CookingUnit (HeatingController, StirringMechanism,
@@ -18,7 +20,7 @@ function buildLogicalAllocation()
     logArch  = logModel.Architecture;
     cookArch = logArch.getComponent('CookingUnit').Architecture;
 
-    removeRefineLinksToModel(srSet, 'GalacticSoupLogical');
+    removeImplementLinksToModel(srSet, 'GalacticSoupLogical');
 
     cookSubs = {'HeatingElement','HeatingController','StirringMechanism','RecipeExecutor'};
 
@@ -43,13 +45,16 @@ function buildLogicalAllocation()
             else
                 comp = logArch.getComponent(name);
             end
-            lnk      = slreq.createLink(req, comp);
-            lnk.Type = 'Refine';
+            lnk      = slreq.createLink(comp, req);
+            lnk.Type = 'Implement';
             nLinks   = nLinks + 1;
         end
     end
 
     slreq.saveAll();
-    fprintf('SR -> Logical Refine links: %d\n', nLinks);
-    registerWithProject({fullfile(archDir, 'GalacticSoupLogical.slx')});
+    fprintf('Logical -> SR Implement links: %d\n', nLinks);
+    registerWithProject({ ...
+        fullfile(archDir, 'GalacticSoupLogical.slx'), ...
+        fullfile(archDir, 'GalacticSoupLogical~mdl.slmx'), ...   % link store created by slreq when linking into the model
+    });
 end

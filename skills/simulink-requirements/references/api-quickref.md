@@ -116,15 +116,22 @@ Verified against sim_mission project (MATLAB R2025a, Requirements Toolbox).
 High-level req ──[Derive outLink]──> Lower-level req
                <──[Derive inLink]───
 
-Model block ──[Implement]──> Requirement    (block has outLink; req has inLink)
-Test case   ──[Verify]────> Requirement    (test has outLink; req has inLink)
-Requirement ──[Refine]────> Component      (req has outLink; component has inLink)
+Component   ──[Implement]──> Requirement (component has outLink; req has inLink)
+Model block ──[Implement]──> Requirement (block has outLink; req has inLink)
+Test case   ──[Verify]─────> Requirement (test has outLink; req has inLink)
 ```
 
-A requirement is **implemented** when it has `inLinks()` of type `Implement`.
+slreq link direction: source = the active artifact, destination = the requirement it
+relates to.
+
+A requirement **is implemented by** an architecture element when it has `inLinks()` of
+type `Implement` whose source is a System Composer component (or a Simulink block).
 A requirement is **verified** when it has `inLinks()` of type `Verify`.
-A requirement **derives from** another when it has `outLinks()` of type `Derive`.
-A requirement **is allocated to** a component when it has `outLinks()` of type `Refine`.
+A requirement **derives from** another when it has `outLinks()` of type `Derive` (the
+deriving requirement points at its parent — the only direction-flipped case).
+`Refine` is reserved for requirement-to-requirement refinement (more specific child
+requirement of the same artifact kind) and is not used for requirement → architecture
+in this workflow.
 
 ---
 

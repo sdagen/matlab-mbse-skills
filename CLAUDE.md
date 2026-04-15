@@ -17,7 +17,7 @@ skills/
   mbse-new-project/   Guided end-to-end workflow — the conversation driver
   mbse/               Thin index mapping workflow phases to other skills
   mbse-architecture/  System Composer architecture, allocation sets, analysis
-  simulink-requirements/  slreq API — req sets, Derive/Refine/Verify links, traceability
+  simulink-requirements/  slreq API — req sets, Derive/Implement/Verify links, traceability
   simulink-test/      Simulink Test .mldatx patterns (Tier 2 verification)
   system-composer/    Deep System Composer API reference
 examples/GalacticSoup/  Intergalactic soup kitchen reference project (open GalacticSoup.prj)
@@ -31,15 +31,15 @@ The whole repo is organized around this traceability chain — understand it bef
 
 ```
 StakeholderNeed ─Derive─▶ SystemRequirement
-                            ├─Refine─▶ Function          (Functional.slx)
-                            ├─Refine─▶ LogicalComponent  (Logical.slx)
-                            ├─Refine─▶ PhysicalComponent (Physical.slx)
+                            ◀─Implement── Function          (Functional.slx)
+                            ◀─Implement── LogicalComponent  (Logical.slx)
+                            ◀─Implement── PhysicalComponent (Physical.slx)
                             └─Verify─▶ TC Requirement ─Verify─▶ Simulink Test Case
 
 Function ─F→L Allocate─▶ LogicalElement ─L→P Allocate─▶ PhysicalComponent
 ```
 
-Three separate architecture models (F/L/P), two allocation sets (F→L, L→P). SR→architecture Refine links are created **immediately after each architecture phase**, not deferred — this is a deliberate design decision (see README note) so traceability is reviewable layer by layer.
+Three separate architecture models (F/L/P), two allocation sets (F→L, L→P). Architecture→SR Implement links are created **immediately after each architecture phase**, not deferred — this is a deliberate design decision (see README note) so traceability is reviewable layer by layer.
 
 ## Running the GalacticSoup example
 
