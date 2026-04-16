@@ -84,10 +84,16 @@ Ask the following questions (can be in one message):
 1. **System name** — what is the system called? (Used for file and model names, e.g. `SatComSystem`)
 2. **Project location** — full path to the folder where the project should be created
 3. **System description** — one paragraph: what does it do, what problem does it solve?
-4. **Major subsystems** — top-level physical components, if the user has them in mind (Claude will propose if not)
+4. **Requirements source** — do you already have system requirements in an Excel/xlsx file, or should we develop them together in the interview? (determines Phase 1 Path A vs. Path B below)
 5. **Key engineering concerns** — what properties of components matter for design decisions? (e.g. mass, power consumption, cost, reliability, latency, data rate — these become stereotype properties)
 6. **Analysis needs** — is any quantitative roll-up or trade study analysis needed? If so, what kind?
 7. **Test framework** — will Simulink Test be used for verification? (determines whether Phase 9 runs)
+
+**Do not ask the user for physical subsystems up front.** The physical
+architecture is *derived* from the functional architecture, the logical
+architecture, and the SRs — not specified a priori. If the user volunteers a
+physical decomposition, note it but do not commit to it; the Phase 4 proposal
+must still be driven by what the L→P mapping and hardware-specific SRs require.
 
 After gathering answers, create the MATLAB Project inline (not as a saved script,
 since the scripts/ folder doesn't exist yet):
@@ -130,7 +136,15 @@ delete(fullfile(archDir, 'OldArtifact.sldd'));             % then remove from di
 
 ## Phase 1: Requirements
 
-### Propose
+Phase 1 has two entry modes. Use **Path A** when the user is developing
+requirements from scratch in the interview, and **Path B** when the user
+already has system requirements in an Excel file (Phase 0 question 4).
+
+---
+
+### Path A — Draft requirements from the interview
+
+#### Propose
 
 Based on the interview, draft:
 - **Stakeholder Needs (SNs)** — 4–8 operational-perspective statements. Format: `SN-XXX-NNN`. Focus on what users/operators need, not how the system works.
@@ -138,16 +152,50 @@ Based on the interview, draft:
 
 Present these as a table for the user to review. Wait for approval or changes.
 
-### Generate
+#### Generate
 
-After approval, generate `scripts/buildRequirements.m` using patterns from the `mbse-requirements` skill. The script must:
+After approval, generate `scripts/buildRequirements.m` using patterns from the `simulink-requirements` skill. The script must:
 - Delete and recreate both `.slreqx` files and their `.slmx` link files on every run
 - Create all SNs, all SRs, and Derive links from each parent SN to its derived child SR(s) — `slreq.createLink(sn, sr); lnk.Type = 'Derive';` (SN is the source, SR is the destination)
 - Use `slreq.clear()` at the top
 
-### Checkpoint
+#### Checkpoint
 
 Show: requirement counts, derivation link count. Ask the user to confirm counts match what was approved.
+
+---
+
+### Path B — Import requirements from Excel
+
+#### Clarify
+
+Ask the user:
+- **xlsx file path(s)** — one SR file, or separate SN and SR files? Full path to each.
+- **Column mapping** — which columns correspond to Id, Summary, Description, Rationale? Default is 1–4 in that order. Read the header row with `readtable(..., 'VariableNamingRule','preserve')` and show it back before confirming.
+- **Derive links** — if the xlsx has a parent-reference column (e.g. `DerivedFrom`), ask whether to rebuild Derive links from it. If yes, the SR import uses `attributeColumn` to preserve it as a custom attribute, and `buildRequirements.m` reads that attribute post-import to create `slreq.createLink(snId, srId); lnk.Type='Derive'` for each listed parent.
+- **SN handling** — if the user only has SRs in Excel and no SN file, note that the downstream workflow will trace at the SR layer only (no upstream Derive links). Offer to synthesize placeholder SNs from SR summaries later if wanted.
+
+#### Propose
+
+Present a brief plan, e.g.:
+> Import `SystemRequirements.xlsx` (16 rows) as editable set `SystemRequirements`, columns 1–4 mapped to Id/Summary/Description/Rationale, `DerivedFrom` (column 5) kept as a custom attribute. No SN file supplied — downstream traceability starts at SR.
+
+Wait for approval.
+
+#### Generate
+
+Generate `scripts/buildRequirements.m` using the `importMyRequirements` helper from the `simulink-requirements` skill (see [`simulink-requirements/code/importMyRequirements.m`](../simulink-requirements/code/importMyRequirements.m)). The script must:
+- Use `AsReference=false` so requirements are editable (imported copies, not read-only references to the xlsx)
+- Pass `rows=[2 lastRow]` to skip the header row — otherwise the header becomes a requirement
+- Explicitly call `reqSet.save()` — `slreq.import` does not save to disk on its own
+- Register the `.slreqx` and its `~slreqx.slmx` with the project
+- Be idempotent: delete the `.slreqx` and `.slmx` before re-importing
+
+Note that `slreq.import` also auto-creates a `Container` node wrapping the imported items (named `"<File>!<Sheet>"`). This container will appear in the Requirements Editor — that is normal. Downstream phases (Phase 2 mapping, Phase 7 allocation) must filter it out by `r.Type ~= "Container"` when iterating requirements.
+
+#### Checkpoint
+
+Show: requirement count (excluding the Container), the set name, any custom attributes preserved, and the first 2–3 requirements as a sanity check (Id, Summary, first part of Description). Ask the user to confirm the import looks right before moving to Phase 2.
 
 ---
 
@@ -246,14 +294,26 @@ logical model represents the right solution principles before moving to physical
 
 ### Propose
 
-Based on the logical architecture and SRs, propose:
+The physical components are **derived from** the logical architecture and the
+SRs — they are not supplied by the user. Work out the decomposition by asking:
+for each logical element, what concrete hardware/software unit realizes it
+within the constraints set by the SRs (budgets, environment, interfaces)? Which
+hardware-specific SRs (packaging, EMC, power, environmental) force a component
+boundary to exist? Group and split logical elements along those lines.
+
+Then propose:
 - **Components** — typically 4–8 top-level physical components. For each: name, one-sentence
-  role, which logical element(s) it implements
+  role, which logical element(s) it implements, and which SR(s) force it to exist as a
+  distinct unit
 - **Physical interfaces** — implementation-level data/signal types with concrete fields,
   types, and units (e.g., `ElectricalPower` with Voltage/Current elements)
 - **Connections** — which component ports connect to which
 
 Present as a component list + connection diagram in text. Wait for approval.
+
+If the user volunteered a physical decomposition in Phase 0, still derive the
+proposal independently and then reconcile — call out any divergence so the user
+can decide whether to override the derived structure or revisit the L→P mapping.
 
 ### Generate
 

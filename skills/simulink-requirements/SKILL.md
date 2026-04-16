@@ -178,6 +178,27 @@ exportRequirementsToExcel(slreqxFile)
 
 ---
 
+## Importing a Requirement Set from Excel
+
+`slreq.import` handles Excel natively, but has three gotchas worth wrapping:
+it treats the header row as a requirement (use `rows=[2 lastRow]` to skip it),
+it auto-creates a `Container` node wrapping the items, and — most importantly —
+it does **not save to disk** (the returned ReqSet is marked `Dirty=1`; call
+`.save()` explicitly).
+
+Use `AsReference=false` to get an editable copy rather than read-only references
+to the xlsx, and map columns with `idColumn` / `summaryColumn` /
+`descriptionColumn` / `rationaleColumn`.
+
+See [`code/importMyRequirements.m`](code/importMyRequirements.m) for a wrapper
+that applies the defaults and saves:
+
+```
+importMyRequirements(xlsxFile, setName)
+```
+
+---
+
 # Verification (Phase 7) — TC Requirements
 
 Test cases live in their own requirement set (`TestCases.slreqx`), separate from
