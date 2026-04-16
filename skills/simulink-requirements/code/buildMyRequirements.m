@@ -21,10 +21,11 @@ function buildMyRequirements(snFile, srFile)
 
     srSet = slreq.new(srFile);
     sr1 = addReq(srSet, 'SR-SYS-001', 'Title', "The system shall ... [criterion].", ...
-        "Derived from SN-SYS-001.");
+        "Why this criterion — e.g. 'X picked to cover worst-case load with margin.'");
     srSet.save();
 
-    lnk = slreq.createLink(sr1, sn1);
+    % Derive link: SN (parent/source) -> SR (derived child/destination).
+    lnk = slreq.createLink(sn1, sr1);
     lnk.Type = 'Derive';
     slreq.saveAll();
 end

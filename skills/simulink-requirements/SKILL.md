@@ -147,6 +147,37 @@ buildMyRequirements(snFile, srFile)
 
 ---
 
+## Exporting a Requirement Set to Excel
+
+There is **no public slreq Excel-export API**. `slreq.export` emits ReqIF only,
+and the Requirements Editor's File → Export → Microsoft Excel is GUI-only. To
+script an xlsx export, build the table yourself with `writetable`.
+
+Extract parent IDs from incoming `Derive` links so the `DerivedFrom` column is
+populated instead of stuffing parent refs into Rationale:
+
+```matlab
+function ids = deriveParents(req)
+    ids  = strings(0,1);
+    lnks = req.inLinks();
+    for k = 1:numel(lnks)
+        if strcmp(lnks(k).Type, 'Derive')
+            % getSourceLabel() returns "ID Summary"; strtok pulls just the ID
+            ids(end+1,1) = string(strtok(lnks(k).getSourceLabel())); %#ok<AGROW>
+        end
+    end
+end
+```
+
+See [`code/exportRequirementsToExcel.m`](code/exportRequirementsToExcel.m) for the
+full parameterized function:
+
+```
+exportRequirementsToExcel(slreqxFile)
+```
+
+---
+
 # Verification (Phase 7) — TC Requirements
 
 Test cases live in their own requirement set (`TestCases.slreqx`), separate from
@@ -459,3 +490,27 @@ before calling `r.getImplementationStatus()`, otherwise it throws.
 **Delete `.slmx` link files alongside `.slreqx` files** when rebuilding requirement
 sets. Stale `.slmx` files store cross-artifact links and will auto-open old model
 files on load, causing conflicts.
+
+**Don't stuff parent-reference text into `Rationale`.** Writing `"Derived from
+SN-SYS-001."` into `req.Rationale` shadows the real purpose of the field AND
+collides with the `DerivedFrom` column on xlsx export. Keep `Rationale` for the
+*why* (what constraint or judgment picked this value); let the Derive link carry
+the parent reference, and extract it from `inLinks()` at export time.
+
+**Getting a parent requirement's Id from a link.** `lnk.source()` returns a
+struct with `.domain`, `.artifact`, `.id` — but `.id` is the numeric SID, not
+the user-facing Id like `'SN-SYS-001'`. For the Id string, use
+`strtok(lnk.getSourceLabel())` — the label format is `"ID Summary"`, so
+`strtok` pulls just the Id.
+
+**`slreq.import` does not save to disk.** The function returns
+`[refCount, reqSetFilePath, reqSetObj]` — the path is where the file *will*
+live, but the ReqSet is only in memory and marked `Dirty=1`. Call
+`reqSetObj.save()` (or `slreq.saveAll()`) before closing, or the imported set
+vanishes. Observed with `AsReference=false` on Excel import; worth checking
+before relying on the default behavior in other modes.
+
+**Excel import treats the header row as a requirement** unless you set
+`rows=[firstDataRow lastDataRow]`. Also auto-creates a `Container` node named
+`"<File>!<Sheet>"` wrapping the imported items; filter it out with
+`r.Type == "Container"` when iterating.

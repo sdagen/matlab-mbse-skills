@@ -16,6 +16,8 @@ Verified against sim_mission project (MATLAB R2025a, Requirements Toolbox).
 | `slreq.saveAll()` | — | Save all open sets including cross-artifact link files |
 | `slreq.new(path)` | `slreq.ReqSet` | Create a new, empty requirement set |
 | `slreq.createLink(src, dst)` | `slreq.Link` | Create a new link between two artifacts |
+| `slreq.import(docPath, ...)` | `[refCount, path, reqSet]` | Import from Excel / Word / ReqIF. **Does not save** — call `reqSet.save()`. For Excel, pass `rows=[first last]` to skip the header row, and `idColumn`/`summaryColumn`/`descriptionColumn`/`rationaleColumn` to map columns. |
+| `slreq.export(reqSet, ...)` | char | Exports **ReqIF only**, not Excel. For xlsx, build a table and use `writetable` (see `code/exportRequirementsToExcel.m`). |
 
 ---
 
