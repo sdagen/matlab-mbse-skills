@@ -46,30 +46,33 @@ function buildRequirements()
 
     %% System Requirements
     srSet = slreq.new(srFile);
+    % Description is stored as HTML by slreq — literal <, >, <=, >= get
+    % parsed as (mal-formed) tags and the Requirements Editor silently
+    % drops everything from the first < through the next >. Use words
+    % ("at least", "at most", "not exceeding") instead.
     srSpec = {
-      % id,              summary,                  parent, description
-      'SR-GS-001','Recipe count',                 '001', "System shall cook at least 8 distinct recipes selectable at runtime. Pass: >= 8 recipes available."
-      'SR-GS-002','Throughput',                   '001', "System shall sustain total throughput >= 200 bowls/hour. Pass: measured throughput >= 200 bowls/h."
-      'SR-GS-003','Automation level',             '002', "System shall achieve average automation level >= 0.8 across components. Pass: mean(automationLevel) >= 0.8."
-      'SR-GS-004','Operator count',               '002', "System shall require <= 5 concurrent operators at peak load. Pass: peak operator count <= 5."
-      'SR-GS-005','Shipping manifest',            '003', "System shall generate a shipping manifest per batch including destination. Pass: manifest present with populated address field."
-      'SR-GS-006','Transport loading time',       '003', "System shall load packaged soup onto transport within 10 minutes of packaging. Pass: elapsed time <= 10 min."
-      'SR-GS-007','Contamination detection',      '004', "System shall detect contamination before sealing with >= 99% sensitivity. Pass: sensitivity >= 0.99."
-      'SR-GS-008','Serving temperature',          '004', "System shall verify soup temperature in 70-95 C before QC sign-off. Pass: 70 <= T <= 95 C."
-      'SR-GS-009','Container seal life',          '005', "System shall seal containers rated for 30-day interstellar transit. Pass: shelf-life >= 30 d and leak-tight."
-      'SR-GS-010','Inventory accuracy',           '006', "System shall track ingredient inventory with <= 1% stock error. Pass: |measured - recorded| / recorded <= 0.01."
-      'SR-GS-011','Mass budget',                  '007', "Total system mass shall not exceed 15000 kg. Pass: sum(mass) <= 15000 kg."
-      'SR-GS-012','Power budget',                 '007', "Total system power draw shall not exceed 500 kW. Pass: sum(power) <= 500 kW."
-      'SR-GS-013','Cost budget',                  '007', "Total system cost shall not exceed 2000000 credits. Pass: sum(cost) <= 2e6 credits."
-      'SR-GS-014','Volume budget',                '007', "Total system volume shall not exceed 400 m^3. Pass: sum(volume) <= 400 m^3."
-      'SR-GS-015','Gravity operating range',      '008', "System shall perform all cooking, packaging, and shipping functions nominally across ambient gravity 0.1 g - 12 g. Pass: full functional test passes at 0.1, 1, 6, 12 g."
-      'SR-GS-016','Structural 12 g tolerance',    '008', "System structure and mounts shall withstand sustained 12 g loading without permanent deformation. Pass: no yield at 12 g load with factor of safety >= 1.5."
+      % id,              summary,                  parent, description,                                                                                                                           rationale
+      'SR-GS-001','Recipe count',                 '001', "System shall cook at least 8 distinct recipes selectable at runtime.",                                                                 "Eight recipes gives menu variety while staying within ingredient storage and recipe-validation budgets."
+      'SR-GS-002','Throughput',                   '001', "System shall sustain total throughput of at least 200 bowls/hour.",                                                                    "200 bowls/hour matches expected peak order rate aggregated across customer worlds."
+      'SR-GS-003','Automation level',             '002', "System shall achieve average automation level of at least 0.8 across components.",                                                     "0.8 automation lets the 5-operator crew cover a 24/7 facility with rotation and breaks."
+      'SR-GS-004','Operator count',               '002', "System shall require at most 5 concurrent operators at peak load.",                                                                    "Facility berthing and life support are sized for a 5-person crew."
+      'SR-GS-005','Shipping manifest',            '003', "System shall generate a shipping manifest per batch including destination.",                                                           "Manifest is required for customs, transport routing, and recipient confirmation on delivery."
+      'SR-GS-006','Transport loading time',       '003', "System shall load packaged soup onto transport within 10 minutes of packaging.",                                                       "10-minute window keeps loading pipeline aligned with the 200 bowls/hour production rate."
+      'SR-GS-007','Contamination detection',      '004', "System shall detect contamination before sealing with at least 99% sensitivity.",                                                      "99% sensitivity balances false-positive rework cost against the downstream cost of a contaminated shipment."
+      'SR-GS-008','Serving temperature',          '004', "System shall verify soup temperature in 70-95 C before QC sign-off.",                                                                  "70-95 C is the safe serving range: above pathogen-kill threshold and below scald risk."
+      'SR-GS-009','Container seal life',          '005', "System shall seal containers rated for 30-day interstellar transit.",                                                                  "30 days covers typical transit time to the farthest customer worlds with margin."
+      'SR-GS-010','Inventory accuracy',           '006', "System shall track ingredient inventory with at most 1% stock error.",                                                                 "1% stock error keeps reorder decisions accurate enough to avoid production-halting stock-outs."
+      'SR-GS-011','Mass budget',                  '007', "Total system mass shall not exceed 15000 kg.",                                                                                         "Allocated from the facility deployment mass budget."
+      'SR-GS-012','Power budget',                 '007', "Total system power draw shall not exceed 500 kW.",                                                                                     "Allocated from the facility power budget."
+      'SR-GS-013','Cost budget',                  '007', "Total system cost shall not exceed 2000000 credits.",                                                                                  "Allocated from the facility capital cost budget."
+      'SR-GS-014','Volume budget',                '007', "Total system volume shall not exceed 400 m^3.",                                                                                        "Allocated from the facility floor-space and volume budget."
+      'SR-GS-015','Gravity operating range',      '008', "System shall perform all cooking, packaging, and shipping functions nominally across ambient gravity 0.1 g to 12 g.",                  "0.1-12 g spans the full ambient gravity range across candidate customer worlds."
+      'SR-GS-016','Structural 12 g tolerance',    '008', "System structure and mounts shall withstand sustained 12 g loading without permanent deformation.",                                    "12 g is the worst-case sustained ambient gravity among customer worlds."
     };
 
     nLinks = 0;
     for i = 1:size(srSpec,1)
-        sr = addReq(srSet, srSpec{i,1}, srSpec{i,2}, srSpec{i,4}, ...
-            "Derived from SN-GS-" + string(srSpec{i,3}) + ".");
+        sr = addReq(srSet, srSpec{i,1}, srSpec{i,2}, srSpec{i,4}, srSpec{i,5});
         % Derive link: SN (source, parent) -> SR (destination, derived child).
         lnk = slreq.createLink(sn(srSpec{i,3}), sr);
         lnk.Type = 'Derive';
