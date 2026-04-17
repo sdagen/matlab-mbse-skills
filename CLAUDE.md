@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A collection of Claude **skills** (not runnable code) plus a worked MATLAB example for Model-Based Systems Engineering (MBSE). There is no build system, no test runner, no package manifest — the skills are markdown instructions Claude loads to drive MATLAB/System Composer/Requirements Toolbox through the user's installed MATLAB (via the `matlab` MCP server).
 
+**Prerequisites:** System Composer and Requirements Toolbox. MATLAB R2023a or later; the GalacticSoup example was developed and tested on R2025b. Do not propose APIs introduced after the user's release.
+
+See [OVERVIEW.md](OVERVIEW.md) for the full workflow description, phase-by-phase artifact breakdown, and design rationale.
+
 ## Primary entry point
 
 When a user wants to start a new MBSE project, the `mbse-new-project` skill drives a conversational, phase-by-phase guided workflow (interview → propose → approve → generate script → run via MATLAB MCP → confirm). It draws on the other skills for API patterns. Do not skip ahead; each phase waits for user approval before generating the next script.
@@ -39,7 +43,7 @@ StakeholderNeed ─Derive─▶ SystemRequirement
 Function ─F→L Allocate─▶ LogicalElement ─L→P Allocate─▶ PhysicalComponent
 ```
 
-Three separate architecture models (F/L/P), two allocation sets (F→L, L→P). Architecture→SR Implement links are created **immediately after each architecture phase**, not deferred — this is a deliberate design decision (see README note) so traceability is reviewable layer by layer.
+Three separate architecture models (F/L/P), two allocation sets (F→L, L→P). Architecture→SR Implement links are created **immediately after each architecture phase**, not deferred — this is a deliberate design decision (see the "Note on requirements allocation" in `OVERVIEW.md`) so traceability is reviewable layer by layer.
 
 ## Running the GalacticSoup example
 
@@ -48,7 +52,15 @@ openProject('examples/GalacticSoup/GalacticSoup.prj')
 buildAll()    % rebuilds every artifact idempotently from scratch
 ```
 
-Individual phase scripts live in `examples/GalacticSoup/scripts/build*.m` and can be rerun independently; all are idempotent. `examples/GalacticSoup/DECISIONS.md` records the phase-by-phase decisions from the interview that produced the project.
+Claude runs these through the `matlab` MCP server (the user's MATLAB desktop is visible; figures appear there). Phase scripts in `examples/GalacticSoup/scripts/` are all idempotent and rerunnable independently:
+
+- `buildRequirements.m` — stakeholder needs + system requirements
+- `buildFunctional.m` / `buildLogical.m` / `buildPhysical.m` — the three F/L/P architecture models
+- `buildFunctionalAllocation.m` / `buildLogicalAllocation.m` / `buildPhysicalAllocation.m` — arch → SR Implement links (one per architecture phase, run immediately after it)
+- `buildFunctionalToLogical.m` / `buildLogicalToPhysical.m` — the two cross-layer allocation sets
+- `buildTestCases.m`, `runAnalysis.m`, `registerWithProject.m` — verification, roll-up analysis, project registration
+
+`examples/GalacticSoup/DECISIONS.md` records the phase-by-phase decisions from the interview that produced the project.
 
 ## MATLAB conventions
 

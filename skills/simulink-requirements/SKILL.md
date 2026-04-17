@@ -153,6 +153,23 @@ There is **no public slreq Excel-export API**. `slreq.export` emits ReqIF only,
 and the Requirements Editor's File → Export → Microsoft Excel is GUI-only. To
 script an xlsx export, build the table yourself with `writetable`.
 
+**Requirement sets can be hierarchical.** `find(rs, 'Type', 'Requirement')`
+returns *all* requirements flat in storage order, which silently drops the
+parent/child structure the Requirements Editor displays. To preserve hierarchy:
+
+- Find top-level reqs by filtering for `~isa(r.parent(), 'slreq.Requirement')`
+  — top-level items have the ReqSet as their parent, not another requirement
+- Recurse via the `children()` method (a method, not a property)
+- Emit rows depth-first so each parent precedes its children
+- Sort siblings with a natural sort on the `Index` string ("1", "1.2", "1.10"
+  as numeric tuples — lexicographic string sort would put 1.10 before 1.2)
+- Write `Index`, `Depth`, `ParentIndex` columns so the hierarchy is recoverable
+  from the xlsx alone
+
+Note also that `r.Id` may be an auto-assigned SID like `#13` if the set was
+authored in the Editor without user IDs — always include the `Index` column as
+a stable user-meaningful identifier.
+
 Extract parent IDs from incoming `Derive` links so the `DerivedFrom` column is
 populated instead of stuffing parent refs into Rationale:
 
