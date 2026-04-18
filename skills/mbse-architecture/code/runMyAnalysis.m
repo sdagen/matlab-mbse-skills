@@ -53,8 +53,11 @@ function runMyAnalysis()
 
     % --- Save for the Analysis Viewer --------------------------------------
     save(instance, fullfile(analysisDir, 'MyAnalysis.mat'));
-    fprintf('\nSaved: analysis/MyAnalysis.mat\n');
-    fprintf('Open: systemcomposer.analysis.openViewer(''MyAnalysis'')\n');
+    % Open the Analysis Viewer with the LIVE (post-iterate) instance.
+    % R2025b requires an instance object; the name-string form
+    % openViewer('MyAnalysis') does NOT work — "A name is expected" error.
+    systemcomposer.analysis.openViewer('Source', instance);
+    fprintf('\nSaved: analysis/MyAnalysis.mat  (viewer opened with live instance)\n');
 
     % Register both the analysis output and the analysis function file with
     % the project. The function file lives in analysis/, not scripts/.

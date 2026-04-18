@@ -30,11 +30,36 @@ See `references/api-quickref.md` in this skill folder for a compact one-page API
 | Extension | Class | Role |
 |---|---|---|
 | `.slreqx` | `slreq.ReqSet` | Stores requirements (text, hierarchy) |
-| `.slmx` | `slreq.LinkSet` | Stores traceability links between artifacts |
+| `.slmx` | `slreq.LinkSet` | Stores traceability links **outgoing from a source artifact** |
 
-Every `.slreqx` file has a paired `.slmx` file (named `MyReqs~slreqx.slmx`).
-Model files (`.slx`) also have paired `.slmx` files (named `MyModel~mdl.slmx`).
-Test files (`.mldatx`) have `MyTests~mldatx.slmx`.
+### When a `.slmx` file is created
+
+slreq writes a `.slmx` file **only when its companion artifact is the source of at least one link.** The LinkSet is keyed on the source artifact, not the destination.
+
+- `MyReqs~slreqx.slmx` appears only if some link's source is a requirement in `MyReqs.slreqx` (e.g., `slreq.createLink(srcReq, destReq)` where `srcReq` lives in `MyReqs`)
+- `MyModel~mdl.slmx` appears only if some link's source is a model element in `MyModel.slx` (typical: `slreq.createLink(component, req)` with Type `Implement` — the component is the source)
+- `MyTests~mldatx.slmx` appears only if some link's source is a test case in `MyTests.mldatx` (typical: Verify links from TCs to SRs)
+
+An artifact that is only ever a link *destination* never gets a paired `.slmx`. In a typical MBSE project:
+
+| Artifact | Gets a `.slmx`? | Why |
+|---|---|---|
+| `StakeholderNeeds.slreqx` | Yes | SNs are the source of Derive links to SRs |
+| `SystemRequirements.slreqx` | **Usually no** | SRs are destinations of Derive / Implement / Verify links; no file unless SR-to-SR Refine links or links to external docs are added |
+| `TestCases.slreqx` | Yes | TC requirements are the source of Verify links to SRs |
+| Architecture `.slx` models | Yes | Components are the source of Implement links to SRs |
+
+### Reporting rules for build scripts
+
+Because `.slmx` files are conditional, **never claim a `.slmx` was produced based on the API calls you made — always verify with `isfile` before reporting.** A script that creates only SN→SR Derive links will produce `StakeholderNeeds~slreqx.slmx` but **not** `SystemRequirements~slreqx.slmx`, even though both `.slreqx` files exist.
+
+Idempotent cleanup and project registration for `.slmx` files must both guard with `isfile`:
+
+```matlab
+if isfile(snLinks), delete(snLinks); end   % cleanup — safe whether or not it exists
+```
+
+The `registerWithProject` helper already does this — it skips files that don't exist on disk — so passing a non-existent `.slmx` path is a no-op, not an error.
 
 ---
 
@@ -121,18 +146,25 @@ slreq.saveAll();   % always call after creating cross-artifact links
 
 ### Side effect: `{modelName}~mdl.slmx` link store
 
-The first time you create a link **into** a Simulink/System Composer model (component,
-subsystem, or block as either source or destination), slreq writes a `{modelName}~mdl.slmx`
-file next to the `.slx`. This file stores the link data and is required for the links
-to survive a reload. After creating links into a model, **always** add this file to the
-MATLAB project alongside the `.slx`:
+The first time you create a link whose **source** is an element of a Simulink/System Composer
+model (component, subsystem, or block), slreq writes a `{modelName}~mdl.slmx` file next to the
+`.slx`. This is the normal case for Implement links in this workflow — `slreq.createLink(component, req)`
+has the component as source, so the link lives in the model's LinkSet, not the requirement set's.
+
+A model that only ever *receives* links (no element of it is used as a link source) does not
+get a `~mdl.slmx`. In MBSE practice this is rare: architecture models almost always have Implement
+links where they are the source.
+
+After creating links whose source is in a model, register both the `.slx` and the `.slmx` with the
+project, guarding `.slmx` registration with `isfile` since the file may not yet exist:
 
 ```matlab
 addFile(proj, fullfile(archDir, 'MyModel.slx'));
-addFile(proj, fullfile(archDir, 'MyModel~mdl.slmx'));   % link store, created automatically
+slmx = fullfile(archDir, 'MyModel~mdl.slmx');
+if isfile(slmx), addFile(proj, slmx); end
 ```
 
-Forgetting to register the `.slmx` causes project file-system checks to fail and the
+Forgetting to register an existing `.slmx` causes project file-system checks to fail and the
 traceability links won't travel when the project is shared.
 
 ---

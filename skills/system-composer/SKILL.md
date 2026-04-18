@@ -93,7 +93,7 @@ These will silently fail or throw cryptic errors without warning:
 | What you want | Correct API | Wrong / common mistake |
 |---|---|---|
 | Connect two component ports | `connect(srcPort, dstPort)` | `connect(arch, srcPort, dstPort)` — silently fails; dispatches to Control System Toolbox |
-| Wire a composite boundary port to a sub-component port | Use the `ArchitecturePort` ref returned by `addPort(comp.Architecture, ...)` | Using `comp.Ports[PortName]` — throws "incompatible directions" |
+| Wire a composite boundary port to a sub-component port | `connect(boundaryArchPort, subComp.getPort("Name"))` — boundary is the saved `ArchitecturePort` ref; sub-component is its `ComponentPort` via `getPort` | Connecting two `ArchitecturePort`s across the boundary, or using the boundary's `ComponentPort` — both throw "incompatible directions" |
 | Assign interface to port | `port.setInterface(iface)` | `port.Interface = iface` — read-only property error |
 | Add interface element | `addElement(iface, "Name", Type="double")` | `Type="MyValueTypeName"` — value type names resolve to `Simulink.ValueType` objects which the bus compiler cannot use; always use a Simulink base type directly |
 | Create model | `systemcomposer.createModel(name)` | `systemcomposer.createModel(name, true)` — invalid 2nd arg |
@@ -136,46 +136,67 @@ verbose but unambiguous and matches how an MBSE diagram will render for review.
 
 ---
 
-## Composite Components: Keep ArchitecturePort Refs for Internal Wiring
+## Composite Components: Mix ArchitecturePort and ComponentPort for Internal Wiring
 
-When a component has sub-components (a composite), boundary ports have two views:
+When a component has sub-components (a composite), its boundary ports have two views:
 
-| View | Accessed via | Used for |
-|---|---|---|
-| External `ComponentPort` | `comp.Ports` | Connections in the **parent** arch |
-| Internal `ArchitecturePort` | return value of `addPort(comp.Architecture, ...)` | Connections **inside** the composite, to sub-component ports |
+| View | Accessed via | Class | Used for |
+|---|---|---|---|
+| External | `comp.Ports` / `comp.getPort(name)` | `ComponentPort` | Connections in the **parent** arch |
+| Internal | return value of `addPort(comp.Architecture, ...)` | `ArchitecturePort` | Connections **inside** the composite, to sub-component ports |
 
-Using the external `ComponentPort` for an internal connection throws:
+A boundary "in" port acts as a *source* from inside the composite's sub-architecture (it delivers data to the sub-components), but its external `ComponentPort` still reports direction `in`. Using the wrong view throws:
 
 ```
 Unable to connect ports because they have incompatible directions.
 ```
 
-The error appears because, from inside the composite, a boundary "in" port acts as a *source* for data entering the sub-architecture — but the external `ComponentPort` still reports direction `in`, so the `connect()` call sees two "in" ports and refuses.
+### The exact rule (verified on R2025b)
 
-**Pattern:** make `addTypedPort` return the port, and save references to each composite boundary port at creation time. Use those saved refs for all internal wiring.
+Internal connections inside a composite require **specific port classes on each side** — verified empirically; mixing them wrong fails every time:
+
+| Connection inside the composite | Source port | Destination port | `connect` call |
+|---|---|---|---|
+| Boundary → sub-component | Saved boundary `ArchitecturePort` | Sub-component `ComponentPort` (via `getPort`) | `connect(boundaryRef, sub.getPort("Name"))` |
+| Sub-component → boundary | Sub-component `ComponentPort` (via `getPort`) | Saved boundary `ArchitecturePort` | `connect(sub.getPort("Name"), boundaryRef)` |
+| Sub-component → sub-component | `ComponentPort` (via `getPort`) | `ComponentPort` (via `getPort`) | `connect(a.getPort("Out"), b.getPort("In"))` — same as top-level |
+
+**Two `ArchitecturePort`s on opposite sides of the boundary fail** with "incompatible directions." That means the `motorPow` pattern — passing the return value of `addPort(sub.Architecture, ...)` to `connect` alongside a boundary `ArchitecturePort` — does **not** work. Use `sub.getPort(name)` instead for the sub-component side.
+
+### Pattern
 
 ```matlab
-function port = addTypedPort(compArch, name, direction, iface)
-    port = addPort(compArch, name, direction);
+function port = addTypedPort(comp, name, direction, iface)
+    port = addPort(comp.Architecture, name, direction);
     port.setInterface(iface);
 end
 
-% Composite creation — keep boundary refs
+% Composite creation — keep the boundary refs
 conv = addComponent(arch, "ConveyorSystem");
-convPowerIn   = addTypedPort(conv.Architecture, "PowerIn",  "in",  ifPower);
-convDiagOut   = addTypedPort(conv.Architecture, "DiagOut",  "out", ifDiag);
+convPowerIn = addTypedPort(conv, "PowerIn", "in", ifPower);   % ArchitecturePort
+convDiagOut = addTypedPort(conv, "DiagOut", "out", ifDiag);   % ArchitecturePort
 
-% Sub-components
-motor    = addComponent(conv.Architecture, "Motor");
-motorPow = addTypedPort(motor.Architecture, "PowerIn", "in", ifPower);
+% Sub-components — no need to save their port refs
+motor = addComponent(conv.Architecture, "Motor");
+addTypedPort(motor, "PowerIn",  "in",  ifPower);
+addTypedPort(motor, "DiagOut", "out", ifDiag);
 
-% Internal connection — use the stored ArchitecturePort ref, NOT conv.Ports
-connect(convPowerIn, motorPow);                 % ✓ correct
-% connect(getPort(conv, "PowerIn"), motorPow);  % ✗ incompatible directions
+% Boundary -> sub: saved ArchitecturePort + sub's ComponentPort
+connect(convPowerIn, motor.getPort("PowerIn"));        % ✓ correct
+
+% Sub -> boundary: sub's ComponentPort + saved ArchitecturePort
+connect(motor.getPort("DiagOut"), convDiagOut);        % ✓ correct
+
+% DO NOT: two ArchitecturePorts across the boundary
+% motorPow = addTypedPort(motor, "PowerIn", "in", ifPower);
+% connect(convPowerIn, motorPow);                      % ✗ incompatible directions
 ```
 
-External connections from the parent arch continue to use `conv.Ports` (via a `getPort(comp, name)` helper) as normal.
+External connections from the parent arch continue to use `conv.getPort(name)` (ComponentPort) as normal, the same as top-level connections between non-composite components.
+
+### Why `addTypedPort(comp, ...)` takes the Component (not its Architecture)
+
+The helper called with a Component does `addPort(comp.Architecture, ...)` internally, so either calling convention works. Passing the Component is slightly cleaner for the common case and matches how non-composite components add ports. For a composite, the *return value* is still the internal `ArchitecturePort` — save it when you'll need it for boundary-to-sub wiring.
 
 ---
 

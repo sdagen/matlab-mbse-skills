@@ -85,8 +85,14 @@ aggregation — that defeats the purpose.
 - `setValue(...)` writes into the analysis instance only — the design model
   is unchanged.
 - Save the instance to `analysis/`, not `architecture/`. `save(instance, path)`
-  writes a `.mat`; the Analysis Viewer opens by instance **name**, not file
-  path: `systemcomposer.analysis.openViewer('MyAnalysis')`.
+  writes a `.mat`.
+- Open the Analysis Viewer with the **instance object**, not a name string:
+  `systemcomposer.analysis.openViewer('Source', instance)`. The shorter form
+  `openViewer('MyAnalysis')` from older MathWorks examples **does not work in
+  R2025b** — it errors with "A name is expected". The driver script should
+  call `openViewer('Source', instance)` directly after `save(instance, ...)`
+  so the user sees the rolled-up values immediately. A separately-saved `.mat`
+  can be reloaded via `load` + re-iterate, or by re-running the driver.
 
 ---
 
