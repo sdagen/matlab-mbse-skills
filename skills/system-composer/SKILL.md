@@ -72,6 +72,8 @@ These will silently fail or throw cryptic errors without warning:
 | Apply stereotype property | `setProperty(comp, ...)` | `setPropertyValue(comp, ...)` — wrong function name |
 | Close all profiles | `systemcomposer.profile.Profile.closeAll()` | `...closeAll("-discard")` — too many arguments |
 | Create profile | `createProfile(name)` | `createProfile(name, "file.xml")` — invalid 2nd arg |
+| Look up a component by path | Keep component vars when adding, or use `resolveComponent(arch, 'Parent/Child')` helper | `arch.lookup('Path', ...)` — does not exist |
+| Create allocation set | `createAllocationSet(name, srcModelName, dstModelName)` — model **names** | `createAllocationSet(name, srcModelObj, dstModelObj)` — model objects fail on R2025b with unhelpful AllocationAppCatalog signature error |
 
 ---
 
@@ -86,6 +88,21 @@ class method. Always use this form for explicit port-to-port connections.
 
 For component-to-component auto-wiring by matching port names, the form
 `connect(arch, [srcComp,...], [dstComp,...])` is also safe since `arch` dispatches correctly.
+
+---
+
+## Port Multiplicity: Fan-Out Works, Fan-In Needs Separate Ports
+
+A single **output port** can be connected to any number of input ports — just call
+`connect(out, in1); connect(out, in2); ...`. This is clean 1→N fan-out; use it for
+broadcast buses (e.g. `Supervisory.Schedule` feeding every production unit).
+
+A single **input port** cannot receive connections from multiple sources. SC is a
+structural modelling tool with no merge semantics — attempting to hook two
+outputs into one input either errors or silently fails. Give the destination
+component **separate named input ports** for each source (e.g.
+`Status_Cook`, `Status_Pack`, `Status_Load`) and wire 1:1. This pattern is
+verbose but unambiguous and matches how an MBSE diagram will render for review.
 
 ---
 

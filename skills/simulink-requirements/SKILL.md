@@ -197,7 +197,7 @@ exportRequirementsToExcel(slreqxFile)
 
 ## Importing a Requirement Set from Excel
 
-`slreq.import` handles Excel natively, but has three gotchas worth wrapping:
+`slreq.import` handles Excel natively, but has several gotchas worth wrapping:
 it treats the header row as a requirement (use `rows=[2 lastRow]` to skip it),
 it auto-creates a `Container` node wrapping the items, and — most importantly —
 it does **not save to disk** (the returned ReqSet is marked `Dirty=1`; call
@@ -207,11 +207,33 @@ Use `AsReference=false` to get an editable copy rather than read-only references
 to the xlsx, and map columns with `idColumn` / `summaryColumn` /
 `descriptionColumn` / `rationaleColumn`.
 
+### Flatten the auto-created Container by default
+
+`slreq.import` always wraps imported items under a single `Container` node
+named `"<File>!<Sheet>"`, which becomes index `1` in the set and pushes every
+actual requirement to `1.1`, `1.2`, etc. Users viewing the set in the
+Requirements Editor see a useless extra hierarchy level. The wrapper helper
+unwraps this by default: it forward-promotes each direct child of the
+Container to top level, then removes the empty Container. Real nested
+hierarchy (e.g. when importing ReqIF with actual parent/child structure) is
+**preserved** — the helper never touches children of non-Container nodes.
+
+Two invariants to preserve if editing the flatten logic:
+
+- **Exactly one Container at top level** — flatten only the auto-import
+  wrapper. If a set has zero or multiple top-level Containers, leave them all
+  alone (that's not the wrapper signature).
+- **Forward-promote, not reverse** — promoting children in reverse reverses
+  sibling order in the resulting flat list. Iterate `1:numel(kids)`.
+
+### Helper
+
 See [`code/importMyRequirements.m`](code/importMyRequirements.m) for a wrapper
 that applies the defaults and saves:
 
 ```
 importMyRequirements(xlsxFile, setName)
+importMyRequirements(xlsxFile, setName, flatten=false)  % keep the Container
 ```
 
 ---
@@ -550,5 +572,53 @@ before relying on the default behavior in other modes.
 
 **Excel import treats the header row as a requirement** unless you set
 `rows=[firstDataRow lastDataRow]`. Also auto-creates a `Container` node named
-`"<File>!<Sheet>"` wrapping the imported items; filter it out with
+`"<File>!<Sheet>"` wrapping the imported items; the `importMyRequirements`
+helper flattens it by default (see above), otherwise filter it out with
 `r.Type == "Container"` when iterating.
+
+**`req.inLinks()` auto-loads referenced ReqSets.** Calling `inLinks()` on a
+requirement causes slreq to resolve link sources, which loads any `.slmx` /
+`.slreqx` files that reference this set. So a plain
+`slreq.load(SystemRequirements.slreqx); req.inLinks();` may silently bring
+`TestCases.slreqx` into memory too (if any Verify link points here). This
+causes hidden state leakage across phases of a pipeline — if one phase loaded
+SR and walked its inLinks, the next phase's `slreq.clear()` must happen
+before that phase's `slreq.load()`, not after, and you can't assume `slreq.find`
+only returns sets you explicitly loaded.
+
+**`req.remove()` leaves orphan outLinks in the `.slmx`.** Removing a
+requirement drops the requirement object, but its outgoing links (e.g. Verify
+links pointing at an SR) stay in the LinkSet as "unresolved source" entries
+until the LinkSet is reloaded. Symptom on next open:
+`Warning: LinkSet for MyFile.slreqx contains N links with unresolved sources`.
+Fix: clear the LinkSet explicitly before removing requirements. Pattern:
+
+```matlab
+lnkSets = slreq.find('type','LinkSet','Artifact', reqFile);
+for i = 1:numel(lnkSets)
+    links = lnkSets(i).getLinks();
+    for j = 1:numel(links), links(j).remove(); end
+end
+existing = rs.find('Type','Requirement');
+for k = numel(existing):-1:1, existing(k).remove(); end
+```
+
+**Idempotency pattern: load-or-clear-and-repopulate beats delete-and-new.**
+`slreq.new(file)` intermittently fails with `Can not create Requirement Set
+named X because of name conflict with X.slreqx` even after `slreq.clear()` and
+a successful `delete(file)` — especially in long pipelines where earlier phases
+have touched the file. The robust idempotent pattern is:
+
+```matlab
+if isfile(reqFile)
+    rs = slreq.load(reqFile);
+    clearLinkSet(rs);       % see above — avoids orphan-link warnings
+    clearRequirements(rs);
+else
+    rs = slreq.new(reqFile);
+end
+% ... populate fresh ...
+rs.save();
+```
+
+This is the pattern in Phase 9 of `mbse-new-project/SKILL.md`.

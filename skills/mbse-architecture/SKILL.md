@@ -181,7 +181,7 @@ for i = 1:size(values, 1)
 end
 ```
 
-### Profile path gotcha
+### Profile path gotcha — and the broader string-vs-char trap
 
 `profile.save()` requires a **char array** path:
 
@@ -189,6 +189,27 @@ end
 profile.save([profileName, '.xml'])   % OK  — char concat
 profile.save(profileName + ".xml")    % FAILS — string type not accepted
 ```
+
+This is one instance of a recurring trap across SC and slreq: some APIs silently fail or error with unhelpful messages when handed a `string` where a `char array` is expected. The poison source is typically `proj.RootFolder` — it returns `string`, and **`fullfile(string, ...)` and `fileparts` on a string path both stay string**, so once any upstream path is string, everything downstream is string unless explicitly cast.
+
+**Symptoms to recognize:**
+
+- `profile.save(archDir)` → `Invalid input for argument 2 (p0): Value must be a scalar`
+  Fix: `profile.save(char(archDir))`.
+- `[baseName, 'Set']` where `baseName` came from `fileparts(stringPath)` → MATLAB builds a 2-element string array, not a char concatenation. Passing that array as a name to `createAllocationSet` fails with `No method 'createNewAllocationSet' with matching signature found for class 'systemcomposer.allocation.app.AllocationAppCatalog'` — unhelpful, but the cause is the multi-element name.
+  Fix: `[char(baseName), 'Set']`.
+- `createAllocationSet(name, srcModel, dstModel)` also misbehaves when you pass model *objects* instead of model *names* (char/string). Pass names.
+
+**Rule of thumb:** in scripts that derive paths from `proj.RootFolder`, wrap defensively:
+
+```matlab
+archDir  = char(fullfile(proj.RootFolder, 'architecture'));   % char from the start
+% or cast at the point of use:
+profile.save(char(archDir));
+allocSetName = [char(allocBase), 'Set'];
+```
+
+When an SC/slreq API errors with a signature-mismatch message and the args look right, suspect string-vs-char before anything else.
 
 ---
 
@@ -320,6 +341,23 @@ buildAllocation(reqDir, archDir)
 
 Never use `'..'` in paths passed to System Composer — use `fileparts` twice to get the
 project root, then `addpath` before opening the model by name (shown above).
+
+### Addressing nested components in allocation tables
+
+Sub-components inside a composite (e.g. `CoordinateOperations/SequenceProduction`)
+can't be resolved by a single `getComponent` call — you have to walk into each
+parent's `.Architecture`. Use the shared helper
+[`code/resolveComponent.m`](code/resolveComponent.m) so every allocation script uses
+the same path-resolution logic:
+
+```matlab
+comp = resolveComponent(arch, 'Parent/Child');       % nested
+comp = resolveComponent(arch, 'TopLevelComponent');  % also works
+```
+
+Keep the per-SR allocation tables as `{ 'SR-ID', { 'Parent/Child', 'Other' } }` cell
+arrays and loop through `resolveComponent` — the same idiom works at every layer
+(F→SR, L→SR, P→SR, and F→L / L→P allocation sets).
 
 ---
 

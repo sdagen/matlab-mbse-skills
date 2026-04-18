@@ -21,10 +21,20 @@ function buildAllocationSet(allocFile, funcModelName, physModelName, archDir)
     % Allocation set name must differ from the file base name — save() derives
     % a name from the file path and checks uniqueness; a match causes "name must
     % be unique" to fail.
+    %
+    % TWO gotchas with createAllocationSet:
+    %  1. Pass model NAMES (char/string), not model OBJECTS. Passing objects
+    %     fails on R2025b with "No method 'createNewAllocationSet' with
+    %     matching signature found" deep inside AllocationAppCatalog. The help
+    %     page says objects are accepted but they are not (for this dispatch path).
+    %  2. If allocFile is a string (e.g. from fullfile(proj.RootFolder, ...)),
+    %     fileparts returns a string, and [stringBase, 'Set'] builds a 2-element
+    %     string array rather than a char concatenation — triggering the same
+    %     error. Force char before concatenating.
     [~, allocBase] = fileparts(allocFile);
-    allocSetName   = [allocBase, 'Set'];
+    allocSetName   = [char(allocBase), 'Set'];
     allocSet = systemcomposer.allocation.createAllocationSet(...
-        allocSetName, funcModel, physModel);
+        allocSetName, char(funcModelName), char(physModelName));
 
     % Reuse the default scenario createAllocationSet auto-creates ("Scenario 1")
     % rather than calling createScenario, which would leave the default empty

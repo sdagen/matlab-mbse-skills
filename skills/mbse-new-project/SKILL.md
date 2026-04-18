@@ -77,6 +77,38 @@ and specific — avoid vague placeholders.
 
 ---
 
+## Living documentation: `plan.md` and `decisions.md`
+
+Every MBSE project this skill creates carries two hand-curated markdown files at
+the project root alongside `<Name>.prj`. They are *not* build outputs — they are
+human-readable companions that preserve context a future reader (or future
+Claude session) otherwise couldn't recover from the code.
+
+| File | Purpose | Update cadence |
+|---|---|---|
+| `plan.md` | Canonical overview: scope, source artifacts, engineering concerns, analysis scope, phase status table, open questions, known risks. | At end of each phase (update status, fold newly-resolved open questions) and whenever scope or constraints change. |
+| `decisions.md` | Append-only log of non-obvious design decisions — naming, decomposition, scope trims, rollbacks — each with context, options, rationale, revisit trigger. | Append at any checkpoint where the chosen approach wasn't forced by the requirements, and at every rollback. |
+
+Templates live at
+[`templates/plan.md`](templates/plan.md) and
+[`templates/decisions.md`](templates/decisions.md).
+Phase 0 copies both into the project root, fills placeholders from the interview
+answers, and registers them with the MATLAB project so they travel with the
+repo. Subsequent phases edit them as described above.
+
+**When to append a decisions entry:** only when a judgment call was made. Mechanical
+steps and SR-forced decisions don't belong. Good examples: "shortened artifact
+prefix from full system name to make filenames manageable"; "decomposed
+`CoordinateOperations` into 4 sub-functions per user preference"; "added
+`PowerEstimate_W` to stereotype mid-project after initial scope explicitly
+excluded it". Bad examples: "created the .prj file"; "imported 27 SRs from xlsx".
+
+**When to skip a decisions entry:** bug fixes, API iteration, rerunning a script
+after an error, or anything that reflects tooling friction rather than design
+judgment.
+
+---
+
 ## Phase 0: Interview and Project Setup
 
 Ask the following questions (can be in one message):
@@ -88,6 +120,7 @@ Ask the following questions (can be in one message):
 5. **Key engineering concerns** — what properties of components matter for design decisions? (e.g. mass, power consumption, cost, reliability, latency, data rate — these become stereotype properties)
 6. **Analysis needs** — is any quantitative roll-up or trade study analysis needed? If so, what kind?
 7. **Test framework** — will Simulink Test be used for verification? (determines whether Phase 9 runs)
+8. **Decision context** — anything about the decision context here that isn't obvious from the SRs? Past incidents that shape risk tolerance, organizational constraints, dependent programs, stakeholder or political considerations. This answer seeds `decisions.md` with meaningful backstory so later design choices have the "why" captured alongside the "what".
 
 **Do not ask the user for physical subsystems up front.** The physical
 architecture is *derived* from the functional architecture, the logical
@@ -123,6 +156,31 @@ registerWithProject(files, folders)
 ```
 
 Every build script must call `registerWithProject` at the end, passing the files it creates. `buildAll.m` additionally registers all script files. This keeps the MATLAB Project in sync with the file system without manual intervention.
+
+### Seed the living documentation
+
+As part of Phase 0, copy the two markdown templates into the project root and
+fill their placeholders from the interview answers:
+
+- `plan.md` — substitute `{{SystemName}}`, `{{OnePargraphDescription}}`,
+  `{{RequirementsSource}}`, `{{ProjectFolder}}`, `{{EngineeringConcernsList}}`
+  (Q5), `{{AnalysisScopeList}}` (Q6), `{{SimulinkTestStatus}}` (Q7),
+  `{{DecisionContext}}` (Q8). Leave Open questions / Known risks as starter
+  bullets ("(none identified yet)") or carry any concerns raised during the
+  interview.
+- `decisions.md` — substitute `{{Date}}` (absolute date, e.g. `2026-04-18`),
+  `{{SystemName}}`, and the same Phase 0 answers in the seeded first entry.
+
+Both templates are at
+[`templates/plan.md`](templates/plan.md) and
+[`templates/decisions.md`](templates/decisions.md). Register both with the
+MATLAB project so they ship with the repo:
+
+```matlab
+proj = currentProject();
+addFile(proj, fullfile(proj.RootFolder, 'plan.md'));
+addFile(proj, fullfile(proj.RootFolder, 'decisions.md'));
+```
 
 **Removing files from the project:** If a file that is tracked in the MATLAB project needs to be deleted (e.g., when renaming an artifact or replacing it with a new one), you must call `removeFile(proj, filePath)` *before* deleting the file from disk. A bare `delete()` removes the file but leaves a broken reference in the project, causing health check failures.
 
@@ -191,7 +249,14 @@ Generate `scripts/buildRequirements.m` using the `importMyRequirements` helper f
 - Register the `.slreqx` and its `~slreqx.slmx` with the project
 - Be idempotent: delete the `.slreqx` and `.slmx` before re-importing
 
-Note that `slreq.import` also auto-creates a `Container` node wrapping the imported items (named `"<File>!<Sheet>"`). This container will appear in the Requirements Editor — that is normal. Downstream phases (Phase 2 mapping, Phase 7 allocation) must filter it out by `r.Type ~= "Container"` when iterating requirements.
+Note that `slreq.import` auto-creates a wrapping `Container` node named
+`"<File>!<Sheet>"`, which would push every real requirement down to index
+`1.1, 1.2, ...` in the Requirements Editor. The `importMyRequirements`
+helper **unwraps this wrapper by default** (`flatten=true`), forward-promoting
+each direct child to top level and removing the empty Container. Real nested
+hierarchy (actual parent-child relationships in the source) is preserved —
+only the auto-import wrapper is removed. Pass `flatten=false` to keep the
+Container if you have a reason to (e.g. matching a legacy export).
 
 #### Checkpoint
 
@@ -509,8 +574,40 @@ Note: SR-NNN for property/budget caps (e.g. total mass budget) are typically ver
 
 ### Generate
 
-After approval, generate `scripts/buildTestCases.m` using patterns from the `mbse-verification` skill:
-- Delete the `.slreqx` and `.slmx` link files before recreating
+After approval, generate `scripts/buildTestCases.m` using patterns from the `simulink-requirements` skill.
+
+**Use the load-or-clear-and-repopulate idempotency pattern**, not delete-and-new.
+In long build pipelines (e.g. `buildAll.m` running phases 1–9 back to back),
+`slreq.new(tcFile)` intermittently fails with `name conflict with TestCases.slreqx`
+even after `slreq.clear()` and a seemingly-successful `delete(tcFile)`. The
+robust recipe:
+
+```matlab
+slreq.clear();
+srSet = slreq.load(srFile);
+
+if isfile(tcFile)
+    tcSet = slreq.load(tcFile);
+
+    % Clear the LinkSet first — req.remove() leaves orphan outLinks in the
+    % .slmx that produce "unresolved source" warnings on reload.
+    lnkSets = slreq.find('type','LinkSet','Artifact', tcFile);
+    for i = 1:numel(lnkSets)
+        links = lnkSets(i).getLinks();
+        for j = 1:numel(links), links(j).remove(); end
+    end
+
+    existing = tcSet.find('Type','Requirement');
+    for k = numel(existing):-1:1, existing(k).remove(); end
+else
+    tcSet = slreq.new(tcFile);
+end
+
+% ... add TCs and Verify links ...
+tcSet.save();
+slreq.saveAll();
+```
+
 - Create one TC requirement per SR, link with `Verify` type
 - Call `slreq.saveAll()` at the end
 
@@ -612,6 +709,9 @@ Present a complete artifact inventory:
 
 ```
 Project: <Name>  (<root folder>)
+├── <Name>.prj
+├── plan.md                            (living project overview)
+├── decisions.md                       (append-only decision log)
 ├── requirements/
 │   ├── StakeholderNeeds.slreqx        (N items)
 │   ├── SystemRequirements.slreqx      (N items)
@@ -669,5 +769,6 @@ If the user rejects a checkpoint:
 3. Re-present for approval
 4. Regenerate the script with the changes
 5. Re-run and re-checkpoint
+6. **Append a `decisions.md` entry** capturing the original choice, the reason for the change, and what replaced it — don't rewrite earlier entries. Rollbacks are high-signal moments; failing to log them is how projects lose their "why".
 
 Because every script deletes and recreates its artifacts from scratch, there is no state to undo — just regenerate.
