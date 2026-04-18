@@ -1,38 +1,34 @@
 # MATLAB MBSE Skills
 
-A collection of Claude skills and a worked example for Model-Based Systems Engineering
-(MBSE) in MATLAB — from stakeholder needs through verified test cases, with full
-bidirectional traceability.
+A collection of Claude skills for Model-Based Systems Engineering in MATLAB — from stakeholder needs through verified test cases, with full bidirectional traceability.
 
 ---
 
-## Getting Started: Guided Project Setup
+## The RFLP Workflow
 
-The primary way to use these skills is through the **`mbse-new-project` guided
-workflow**. Tell Claude you want to start a new MBSE project and it will:
+MBSE projects in this suite follow the RFLP methodology, with Verification as the closing step:
 
-1. **Interview you** — system name, location, description, subsystems, engineering
-   concerns (mass, volume, power, cost, …), analysis needs, and whether a simulation
-   model exists
-2. **Propose content at each phase** — stakeholder needs, system requirements,
-   components, interfaces, functions, allocations, test cases — waiting for your
-   approval before generating anything
-3. **Generate and run each build script** — one phase at a time, showing you the
-   output and asking you to confirm before moving on. Each of the three architecture
-   phases (Functional, Logical, Physical) is paired with its own allocation script
-   that creates architecture → SR Implement links immediately, so traceability is
-   reviewable at every layer instead of deferred to a late-stage consolidation pass
-4. **Produce a complete, runnable MATLAB project** — with a `.prj` file, a stereotype
-   profile capturing component engineering properties (mass, volume, power, cost,
-   …) with initial estimates, idempotent build scripts for each phase, all
-   artifacts, and a `buildAll()` entry point that rebuilds everything from scratch
+```
+R — Requirements   Stakeholder Needs → System Requirements (.slreqx)
+F — Functional     What the system does — functions + abstract flows
+L — Logical        What kind of element solves each function — design-agnostic principles
+P — Physical       How it is built — concrete components, interfaces, stereotypes
+                   ──────────────────────────────────────────────────
+V — Verification   Tier 1: TC requirements (.slreqx, always)
+                   Tier 2: Simulink Test (.mldatx, only with a simulation model)
+```
 
-The result is a project like the [GalacticSoup example](examples/GalacticSoup/) — a
-full MBSE artifact set with requirements, architecture, allocation, analysis, and test
-cases all wired together with traceable links.
+Each layer implements or is allocated to the layer above; traceability links run back up. The **Logical** layer is the key addition over classic RFLP — design-agnostic solution principles (e.g., `SensingUnit`, `ControlUnit`) that sit between what the system *does* and how it is *built*.
 
-To start, just say something like:
+---
+
+## Getting Started
+
+Tell Claude what you want to build:
+
 > *"I want to set up a new MBSE project for a [your system]"*
+
+The `mbse-new-project` skill interviews you, then walks through each phase one at a time — proposing content, waiting for approval, generating the build script, running it, and only moving on once you confirm. The result is a runnable MATLAB project with idempotent scripts and a single `buildAll()` entry point that rebuilds everything from scratch.
 
 ---
 
@@ -41,9 +37,25 @@ To start, just say something like:
 | Toolbox | Used for |
 |---|---|
 | System Composer | Architecture modeling, profiles, stereotypes, analysis instances |
-| Requirements Toolbox | Requirement sets, derivation/implementation/verification links |
+| Requirements Toolbox | Requirement sets; Derive / Implement / Verify links |
+| Simulink Test (optional) | Tier 2 executable verification — only when a simulation model exists |
 
-MATLAB R2023a or later recommended. The FCS example was developed and tested on R2025b.
+MATLAB R2023a or later recommended.
+
+---
+
+## Skills
+
+| Skill | Role |
+|---|---|
+| `mbse-new-project` | Orchestrator — interview, propose, generate, run, confirm |
+| `mbse` | Workflow index — which skill covers which phase |
+| `mbse-architecture` | F/L/P models, interface dictionaries, stereotypes, allocation sets, roll-up analysis |
+| `simulink-requirements` | slreq API — creation, links, traceability, coverage |
+| `simulink-test` | Tier 2 Simulink Test `.mldatx` files linked to TC requirements |
+| `system-composer` | System Composer API reference — ports, connections, profiles, gotchas |
+
+`mbse-new-project` drives the conversation; the others provide the API patterns it draws on.
 
 ---
 
@@ -51,42 +63,14 @@ MATLAB R2023a or later recommended. The FCS example was developed and tested on 
 
 ```
 matlab-mbse-skills/
-├── skills/
-│   ├── mbse-new-project/      Guided end-to-end setup (start here for new projects)
-│   ├── mbse/                  Thin workflow index — which skill covers which phase
-│   ├── mbse-architecture/     Architecture, allocation set, and analysis
-│   ├── simulink-requirements/ All slreq API — requirements, links, traceability, coverage
-│   ├── simulink-test/         Simulink Test .mldatx files (Tier 2 verification)
-│   └── system-composer/       Deep System Composer API reference
-└── examples/
-    └── GalacticSoup/          Intergalactic soup kitchen — complete reference example
-        ├── GalacticSoup.prj   MATLAB project (open this first)
-        ├── DECISIONS.md       Phase-by-phase record of approved decisions
-        ├── scripts/           All build scripts (buildAll, per-phase, allocation)
-        ├── requirements/      SN + SR sets, TC requirements
-        ├── architecture/      F/L/P SC models, interface dicts, profile
-        ├── analysis/          Roll-up analysis outputs
-        └── verification/      Simulink Test artifacts
+└── skills/
+    ├── mbse-new-project/      Guided end-to-end setup (start here)
+    ├── mbse/                  Workflow index
+    ├── mbse-architecture/     Architecture, allocation, analysis
+    ├── simulink-requirements/ slreq API — requirements and traceability
+    ├── simulink-test/         Tier 2 verification
+    └── system-composer/       System Composer API reference
 ```
-
-The `mbse-new-project` skill drives the conversation and generates scripts; it draws
-on `simulink-requirements`, `mbse-architecture`, `simulink-test`, and `system-composer`
-for the technical API patterns.
-
----
-
-## GalacticSoup Reference Example
-
-The GalacticSoup example shows what a completed project looks like. Open it and run:
-
-```matlab
-openProject('examples/GalacticSoup/GalacticSoup.prj')
-buildAll()
-```
-
-See [OVERVIEW.md](OVERVIEW.md) for a full description of the workflow, artifacts,
-and design principles, and `examples/GalacticSoup/DECISIONS.md` for the interview
-record that produced this project.
 
 ---
 
@@ -98,7 +82,7 @@ Requirements links:
       └─[Derive]─▶  System Requirement  (SystemRequirements.slreqx)
                         ◀─[Implement]──  Function           (Functional.slx)   mandatory
                         ◀─[Implement]──  Logical Component  (Logical.slx)      non-functional reqs
-                        ◀─[Implement]──  Physical Component (Physical.slx)       hardware reqs
+                        ◀─[Implement]──  Physical Component (Physical.slx)     hardware reqs
                         └─[Verify]─▶  TC Requirement     (TestCases.slreqx)
                                           └─[Verify]─▶  Simulink Test Case  (if behavioral model exists)
 

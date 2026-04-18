@@ -1,19 +1,49 @@
 ---
 name: system-composer
 description: >
-  Use this skill whenever the user wants to create, edit, or extend a MATLAB System Composer
-  architecture model programmatically — including building models, defining interface dictionaries,
-  wiring component connections, creating profiles with stereotypes, or applying property values.
-  Trigger on any mention of System Composer, architecture models (.slx), interface dictionaries
-  (.sldd), stereotypes, profiles, or programmatic component/port/connection creation in MATLAB.
-  Also trigger when the user is debugging System Composer scripts that aren't working as expected
-  (e.g., connections not appearing, interfaces not resolving, profile errors).
+  Use this skill when authoring reusable, idempotent MATLAB scripts that build System Composer
+  architecture models via the architecture-modeling API — `systemcomposer.createModel`,
+  `addComponent`, `addPort`, `setInterface`, `connect(srcPort, dstPort)`, interface dictionaries
+  (.sldd) with `addInterface`/`addElement`, profiles/stereotypes with `Profile.createProfile`
+  and `addStereotype`, or `systemcomposer.allocation.createAllocationSet`. Also trigger when
+  debugging these APIs (connections that don't appear, interfaces that don't resolve, profile
+  save errors, `createAllocationSet` signature-mismatch errors). Do NOT trigger for ad-hoc
+  structural edits to an already-built model (adding one SubSystem, rewiring a port) — use
+  `building-simulink-models` with `model_edit` for that.
 ---
 
 # MATLAB System Composer — Programmatic Authoring Guide
 
 System Composer lets you model multi-domain architectures in MATLAB. This skill captures the
 correct API patterns, common gotchas, and a proven script structure for building models reliably.
+
+---
+
+## When to use this skill vs. `building-simulink-models` (SATK)
+
+Both skills can edit System Composer `.slx` files. They work at **different API layers** — don't mix them in one script.
+
+| Concern | This skill (architecture-modeling API) | `building-simulink-models` with `model_edit` (block-diagram API) |
+|---|---|---|
+| Component creation | `addComponent(arch, "Name")` — returns `systemcomposer.Component` | `add_block` with `type: "SubSystem"` — returns a `blk_id` |
+| Ports | `addPort(arch, "Name", "in", iface)` — typed, interface-aware | Bus Element blocks (`In Bus Element` / `Out Bus Element`) inside the SubSystem |
+| Connections | `connect(srcPort, dstPort)` — port objects | `{"op": "connect", "target": "blk_X.y1 -> blk_Y.PortName"}` |
+| Interface dictionaries (`.sldd`) | First-class (`createDictionary`, `addInterface`, `setInterface`) | Not addressed |
+| Profiles / stereotypes | First-class (`Profile.createProfile`, `addStereotype`, `applyStereotype`) | Not addressed |
+| Allocation sets (`.mldatx`) | First-class (`systemcomposer.allocation.createAllocationSet`) | Not addressed |
+| Auto-layout | **Call `Simulink.BlockDiagram.arrangeSystem` explicitly** before `save` — programmatic adds all land at (0,0) | `model_edit` runs autolayout automatically; its guardrail forbids manual `arrangeSystem` |
+
+**Use this skill when:**
+- Writing an idempotent `buildMyModel.m` / `buildMyArchitecture.m` script that will be re-run from scratch
+- The architecture uses interface dictionaries, stereotypes/profiles, or allocation sets — `model_edit` has no primitives for any of these
+- Debugging SC-specific API failures (CST `connect` shadow, composite `ArchitecturePort` errors, `dict.save` + re-fetch, `profile.save` path, `createAllocationSet` signature mismatch)
+
+**Defer to `building-simulink-models` with `model_edit` when:**
+- Making a one-off structural change to an already-built SC model (add one SubSystem, rewire one port, tweak a parameter)
+- The user just wants "add a component called X" and the model has no interface dictionary / profile / allocation set the change needs to stay consistent with
+- The MBSE workflow in `mbse-new-project` is not involved
+
+**Do not mix in one script.** `model_edit` adds components via `add_block` with `type: "SubSystem"`; this skill adds them via `addComponent`. The two produce different object types and the architecture-modeling APIs in this skill (`setInterface`, `applyStereotype`, `addPort`) may not work on SubSystem-block-created components. Pick one layer per script.
 
 ---
 

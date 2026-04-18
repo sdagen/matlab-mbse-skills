@@ -1,13 +1,15 @@
 ---
 name: mbse-architecture
 description: >
-  Use this skill for the architecture phases of an MBSE workflow in MATLAB — building
-  System Composer physical and functional models, defining component stereotype properties,
-  creating functional-to-physical allocation sets, allocating requirements to components,
-  and running quantitative analysis on the architecture. Trigger when the user wants to
-  create a System Composer model, define stereotypes or component properties, map functions
-  to hardware, link requirements to components, or analyse budgets/margins across an
-  architecture. Works alongside the system-composer skill for detailed SC API patterns.
+  Use this skill for the architecture phases of an MBSE workflow in MATLAB, when writing
+  idempotent buildXxx.m scripts that produce a three-layer RFLPV architecture (Functional,
+  Logical, Physical) with interface dictionaries, stereotype profiles, allocation sets, and
+  requirements Implement links. Trigger for defining stereotype properties, functional-to-logical
+  / logical-to-physical allocation, mapping requirements to components via slreq Implement links,
+  or running quantitative roll-up analysis on the architecture. Do NOT trigger for ad-hoc
+  structural edits to an already-built System Composer model (adding one component, rewiring
+  a port) — use `building-simulink-models` with `model_edit` for that. Works alongside the
+  `system-composer` skill for detailed SC API patterns.
 ---
 
 # MBSE Architecture, Allocation & Analysis (Phases 3–6)
@@ -18,6 +20,18 @@ MBSE-specific decisions and patterns layered on top, plus allocation and analysi
 
 For analysis details see `references/analysis.md` (prose) plus
 `code/myRollupAnalysis.m` and `code/runMyAnalysis.m` (templates).
+
+---
+
+## When to defer to `building-simulink-models` / `model_edit`
+
+This skill produces reusable idempotent build scripts — the whole three-layer architecture, its interface dictionaries, profile, and allocation sets, built from scratch in one `buildAll()` run. That is its sweet spot.
+
+For **one-off edits** to an already-built SC model — adding a single SubSystem to explore a variant, tweaking one port name, renaming a component — prefer SATK's `building-simulink-models` with the `model_edit` MCP tool. `model_edit` handles autolayout, undo, and error recovery automatically and is faster for interactive tweaks.
+
+Once the MBSE model is in a state where you need to round-trip it through `buildPhysical.m` etc. again (for example because you added a stereotype property or changed an allocation), go back to this skill — the `buildXxx.m` scripts will rebuild from scratch and all of `model_edit`'s ad-hoc changes will be overwritten. That is intentional: the build scripts are the source of truth.
+
+**Never mix the two in one script.** The two skills use different System Composer API layers (architecture-modeling vs. block-diagram). See the `system-composer` skill's "When to use this skill vs. `building-simulink-models`" section for the API-layer differences.
 
 ---
 
