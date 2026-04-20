@@ -49,7 +49,7 @@ Verified against sim_mission project (MATLAB R2025a, Requirements Toolbox).
 | `.SID` | int | Internal ID, unique within file |
 | `.Type` | string | `'Functional'`, `'Container'`, `'Safety'`, `'Informational'` |
 | `.Summary` | string | One-line summary |
-| `.Description` | string | **HTML**. Use `getDescriptionAsText()` for plain text. |
+| `.Description` | string | **HTML**. Use `getDescriptionAsText()` for plain text. Escape `<` as `&lt;` in shall-statements (e.g. `"swap shall complete in &lt;= 15 s"`) — a bare `<` is interpreted as an HTML tag start and slreq warns `"Using '<' in the requirement description might affect the display in the Requirements Editor."` on save. A bare `>` is tolerated in practice, but escape it to `&gt;` if you want both directions symmetric — and note that `>=` stored this way reads back as `&gt;=` when parsed from `.Description`, which budget-parsing helpers need to handle. |
 | `.Rationale` | string | Plain text |
 | `.Index` | string | Hierarchical position, e.g. `'2.1.3'` |
 | `.CreatedBy` / `.ModifiedBy` | string | Username |

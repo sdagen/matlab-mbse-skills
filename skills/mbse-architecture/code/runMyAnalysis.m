@@ -77,11 +77,41 @@ function s = sumTop(comps, prop)
 end
 
 function value = parseBudgetValue(srSet, reqId, unit)
-% Extract numeric cap from "shall not exceed X <unit>" in a requirement description.
-    req = srSet.find('Id', reqId);
-    tok = regexp(req.Description, ['not exceed\s+([\d.]+)\s+', unit], 'tokens', 'once');
+% Extract numeric cap from a "shall not exceed ..." requirement description.
+% Accepts both unit orderings: "not exceed X <unit>" (35 kg) and
+% "not exceed <unit> X" (USD 1000) — the latter is common when the unit is a
+% currency symbol or ISO code that conventionally precedes the number.
+    req  = srSet.find('Id', reqId);
+    desc = req.Description;
+    tok = regexp(desc, ['not exceed\s+([\d.]+)\s+', unit], 'tokens', 'once');
+    if isempty(tok)
+        tok = regexp(desc, ['not exceed\s+', unit, '\s+([\d.]+)'], 'tokens', 'once');
+    end
     if isempty(tok)
         error('parseBudgetValue:noMatch', 'Cannot parse %s from %s.', unit, reqId);
+    end
+    value = str2double(tok{1});
+end
+
+function value = parseMinValue(srSet, reqId, unit)
+% Extract numeric floor from a "shall provide >= X <unit>", "at least X <unit>",
+% or "support[s] X <unit>" requirement description. Tolerates HTML-encoded
+% ">=" (stored as "&gt;=" in the .Description HTML payload). Falls back to the
+% first "<number> <unit>" occurrence anywhere in the description — lenient so
+% simple shall-statements parse without ceremony.
+    req  = srSet.find('Id', reqId);
+    desc = req.Description;
+    patterns = {
+        ['(?:&gt;=|>=|at least|support[s]?)\s*([\d.]+)\s+', unit]
+        ['([\d.]+)\s+', unit]
+    };
+    tok = [];
+    for i = 1:numel(patterns)
+        tok = regexp(desc, patterns{i}, 'tokens', 'once');
+        if ~isempty(tok), break; end
+    end
+    if isempty(tok)
+        error('parseMinValue:noMatch', 'Cannot parse %s from %s.', unit, reqId);
     end
     value = str2double(tok{1});
 end

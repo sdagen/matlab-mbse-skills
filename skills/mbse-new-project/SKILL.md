@@ -406,7 +406,11 @@ Based on the engineering concerns *and the view wishlist* identified in Phase 0 
 
 - **Stereotype name** — name it after what you are characterizing, not the analysis activity. e.g. `FlightProperties`, `HardwareProperties`, `ComponentCharacteristics`. Avoid names like `BudgetProperties` — a stereotype often carries mass, power, reliability, and latency together, so a budget-specific name is too narrow.
 - **Properties** — for each: name, type (double/string/enum), unit, what it represents. **Cross-check against the view wishlist.** Every property a view needs to filter on must be on the stereotype; every property on the stereotype should serve at least one view or the rollup analysis. An orphan property is a sign the stereotype is over-scoped or the view list is incomplete.
-- **Which components** each stereotype applies to (usually all, but not always)
+- **Which components each stereotype applies to — leaves, composites, or both.** When the physical architecture contains composite assemblies (sub-components nested inside top-level components), this is a real design choice:
+  - **Leaves only** (default, simpler): `prop == 0` review-dashboard views like `ZeroedEstimate_Flag` stay meaningful — composites don't false-positive because they have no stereotype. The analysis driver rolls up with a recursive `sumLeaves(instance, prop)` walker (see [`mbse-architecture/references/analysis.md`](../mbse-architecture/references/analysis.md) §"Leaves-only stereotype"). Composites are treated as structural containers.
+  - **Both leaves and composites** (canonical `iterate + PostOrder`): the Analysis Viewer displays rolled-up values at every hierarchy level, not just leaves. Tradeoff: composites carry default-0 initial values in the design model, so any `prop == 0` review-dashboard view will false-positive on them until an analysis runs — and rollup results live on the analysis instance, not the design, so the view never actually clears.
+
+  Pick leaves-only unless the user wants hierarchical display in the Analysis Viewer. The Phase 8 analysis pattern follows from this choice.
 - **Initial estimates** — propose plausible starting values per component; user should correct these
 
 Present as a table. Wait for approval.

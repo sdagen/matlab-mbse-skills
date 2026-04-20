@@ -96,7 +96,7 @@ Each phase is a separate idempotent build script. Requirements-to-architecture I
 
 - Build a System Composer model with concrete hardware/software components and typed ports
 - Create a **physical interface dictionary** with implementation-level interfaces — concrete field names, specific types, physical units
-- Define a **profile** with a component properties stereotype capturing the engineering attributes that drive design decisions (mass, power, cost, reliability, latency, throughput, supplier, safety level, …) and apply it with initial estimates. Profile creation sits at the end of the architecture script so estimates travel with the model and survive every rebuild.
+- Define a **profile** with a component properties stereotype capturing the engineering attributes that drive design decisions (mass, power, cost, reliability, latency, throughput, supplier, safety level, …) and apply it with initial estimates. Profile creation sits at the end of the architecture script so estimates travel with the model and survive every rebuild. When the decomposition has composite assemblies, apply the stereotype to **leaf components only** by default — this keeps `prop == 0` review views (`ZeroedEstimate_Flag` etc.) meaningful and matches the recursive-sum analysis driver. Apply to composites too only if you need the Analysis Viewer to display rolled-up values at every hierarchy level (tradeoff: zero-value views false-positive on composites until an analysis runs).
 - Define **architecture views** — named stereotype-query lenses on the physical model (cost drivers, high-power consumers, zeroed-estimate flags, supplier-partition views). Views live *inside* the `.slx` (in `archViews.xml`), so `buildViews.m` runs **after** `buildPhysical.m` as a decoration step and is itself idempotent. Views and stereotype properties are co-designed: every property a view filters on must be on the stereotype.
 - Create **Physical → SR Implement links** for hardware-specific requirements and system-level budget caps that roll up across components
 - Artifacts: `Physical.slx`, `PhysicalInterfaces.sldd`, `Profile.xml` (views are inside the `.slx`)
@@ -115,7 +115,8 @@ Each phase is a separate idempotent build script. Requirements-to-architecture I
 ### Phase 7 — Analysis (optional)
 
 - Compute system-level roll-ups and per-component margins from the architecture profile
-- Budget caps are read from requirements at run time
+- Budget caps are read from requirements at run time — `parseBudgetValue` accepts both `"not exceed X <unit>"` and `"not exceed <unit> X"` (currency-first), and a companion `parseMinValue` handles `">= X <unit>"` / `"at least X <unit>"` / `"support[s] X <unit>"` for floor-style SRs (battery capacity, endurance)
+- Rollup pattern follows from the Phase 4 stereotype-scope choice: leaves-only → recursive-sum walker in the driver; leaves-and-composites → canonical `iterate + PostOrder` pattern
 - Artifact: `Analysis.mat`
 - Script: `runAnalysis.m`
 

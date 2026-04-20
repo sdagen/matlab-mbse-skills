@@ -62,6 +62,39 @@ missing the stereotype even when the parent has it.
 
 ---
 
+## Leaves-only stereotype: recursive sum as an alternative
+
+When the physical architecture has composite assemblies, you have a choice: apply the stereotype to every component (leaves AND composites), or to leaves only. The canonical `iterate + PostOrder` pattern above assumes the former — composites need the stereotype for the guarded block to fire on them.
+
+If you chose **leaves only** (composites are purely structural, and you want `prop == 0` review-dashboard views like `ZeroedEstimate_Flag` to stay meaningful without false-positives), `PostOrder` will skip every composite — their `hasValue` guard returns false — so parent-level aggregation never fires. Do the rollup in the driver with recursive descent instead:
+
+```matlab
+function s = sumLeaves(instance, prop)
+    s = 0;
+    for child = instance.Components
+        if ~isempty(child.Components)
+            s = s + sumLeaves(child, prop);    % composite — descend
+        elseif child.hasValue(prop)
+            s = s + child.getValue(prop);       % leaf with value
+        end
+    end
+end
+```
+
+**Drive the recursion on `~isempty(child.Components)`, not on `~child.hasValue(prop)`.** An instance whose design component has no stereotype applied still reports `hasValue == true` — the profile's property defaults (e.g. `0`) leak through every instance — so a "has no value → recurse" condition stops at composites and silently drops all of their sub-components from the rollup.
+
+### Which pattern to pick
+
+| Prefer leaves-only when | Prefer stereotype-on-composites when |
+|---|---|
+| A `prop == 0` dashboard view is in the view set — applying stereotype to composites would false-positive on their default-0 values, and rollup results live on the analysis instance (not the design model) so the view never clears | You want the Analysis Viewer to display rolled-up values at every hierarchy level, not just leaves |
+| Composites are purely structural containers with no own-attributes worth recording | The composite has meaningful own-attributes (e.g. an assembly-level enclosure mass the child sum would miss) |
+| You want the simplest design model | You prefer the canonical `iterate + PostOrder` pattern and the richer Analysis Viewer display it produces |
+
+Either way the driver's top-level totalling call is the same shape: `sumLeaves(instance, prop)` for the recursive case, `sumTop(instance.Components, prop)` for the canonical case (which relies on composites already holding aggregated values by that point).
+
+---
+
 ## What PostOrder overwriting implies about the design model
 
 PostOrder **overwrites** a parent's profile estimate with the sum (or min,
