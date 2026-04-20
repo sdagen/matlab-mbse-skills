@@ -272,6 +272,61 @@ re-fetch pattern above.
 
 ---
 
+## Architecture Views — filtered lenses on a large model
+
+Once a model grows beyond a couple of dozen components, navigating it becomes a drag. System Composer's **view architectures** are named, saved lenses that filter the architecture by a stereotype-property query. A view appears in the model canvas dropdown and in the Views Gallery (`openViews(model)`), and matching components glow in the color you gave the view. This is how Gulfstream's eSAM method routinely surfaces cost drivers, high-power components, per-supplier subsets, etc. without hand-drawn diagrams that rot.
+
+Two mechanisms:
+
+**Query-driven views** — a single stereotype-property constraint picks members automatically:
+
+```matlab
+import systemcomposer.query.*;
+q = PropertyValue("MyProfile.ComponentProperties.Cost_credits") > 150000;
+v = createView(model, "CostDrivers", Select=q, Color="#D62728");
+```
+
+**Color gotcha:** `Color` accepts hex strings universally (`"#D62728"`) and some but not all named colors — `"red"` and `"blue"` work, `"magenta"` errors with *"The value of 'Color' is invalid. The color must be a hex color or RGB value."* Prefer hex.
+
+`PropertyValue(path)` returns an object that overloads `>`, `<`, `>=`, `<=`, `==`, `~=` to build a query constraint — so the `pv > 150000` expression builds a `systemcomposer.query.Compare` object. Pass it as `Select=`. The view refreshes automatically as stereotype properties change.
+
+To check ad-hoc what a query matches without committing to a view:
+
+```matlab
+matches = find(model, q);   % returns a cell array of qualified-name STRINGS,
+                            % not Component objects (easy mistake)
+for i = 1:numel(matches), disp(string(matches{i})); end
+```
+
+**Explicit-element views** — for anything a single property query can't express (allocation-driven groupings, hand-picked subsets, per-supplier partitions), create an empty view and add elements by hand:
+
+```matlab
+v = createView(model, "ControlRealization", Color="blue");
+v.Root.addElement(arch.getComponent('ControlCabinet'));
+for sub = arch.getComponent('ControlCabinet').Architecture.Components
+    v.Root.addElement(sub);
+end
+```
+
+Both mechanisms are additive — you can start with a query and then `addElement` to include extras that didn't match.
+
+### Idempotency when rebuilding
+
+Views are saved *inside* the `.slx`. Our build scripts recreate the `.slx` from scratch on every run, which wipes views along with everything else. So a view-creation script has to run **after** the relevant `buildXxx.m` and be idempotent itself:
+
+```matlab
+try, deleteView(model, "CostDrivers"); end %#ok<TRYNC>   % guard against first-run-missing
+v = createView(model, "CostDrivers", Select=q, Color="red");
+```
+
+See [`code/buildMyViews.m`](code/buildMyViews.m) for a parameterised helper that takes a list of view specs and creates them all.
+
+### `find()` returns strings, not components
+
+A recurring mistake: `find(model, constraint)` returns a `cell` of qualified-name *strings* like `"MyModel/Parent/Sub"`, not `systemcomposer.arch.Component` objects. If you need the component object to, e.g., call `getPropertyValue`, use `model.lookup("Path", pathString)` to resolve it.
+
+---
+
 ## Verifying Your Model
 
 Run these checks after every build. They catch real problems that the build step itself

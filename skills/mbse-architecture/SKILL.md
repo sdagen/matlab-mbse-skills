@@ -247,6 +247,26 @@ scripts after rebuilding the architecture.
 
 ---
 
+## Architecture Views for review dashboards
+
+Once the Physical model has a stereotype applied with properties like `Mass_kg` / `Power_kW` / `Cost_*`, you get cheap review dashboards by defining **architecture views** — stereotype-query filters on the model. The core SC API is covered in the `system-composer` skill ("Architecture Views — filtered lenses on a large model"); this note is about *which* views are typically worth creating for an MBSE project.
+
+Generate these from a `buildMyViews()` step that runs **after** `buildMyModel()` (otherwise the model rebuild wipes them). A short, high-value starter set:
+
+| View | Query | Signals |
+|---|---|---|
+| `CostDrivers` | `Cost > 0.1 × budget` | Components that dominate the cost budget — first targets for trimming when an SR fails |
+| `HighPowerConsumers` | `Power > 10% of cap` | Likely contributors to a power-margin miss |
+| `HeavyStructure` | `Mass > 1000 kg` (or project-appropriate) | Typically the chassis / pressure vessels / bulk hardware — candidates for material substitution |
+| `ZeroedEstimates_Flag` | `Mass == 0` on non-leaf components | Catches components where the estimate was forgotten; PostOrder rollup will mask this silently otherwise |
+| `ThroughputContributors` | `Throughput > 0` | The production-pipeline members — the ones whose `min` drives the system bottleneck |
+
+The first three are standard procurement/budget views. `ZeroedEstimates_Flag` is the one that reliably catches mistakes: if a component has no stereotype values set, the rollup silently treats it as 0. A view that highlights zeros in red during review is more reliable than reading the analysis printout.
+
+Views also support explicit element lists (no query) for groupings that depend on allocation or supplier rather than a single property — see `system-composer` skill for the pattern.
+
+---
+
 # Allocation (Phases 6–8)
 
 Three distinct allocation steps:

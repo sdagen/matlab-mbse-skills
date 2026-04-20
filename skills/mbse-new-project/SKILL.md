@@ -117,7 +117,10 @@ Ask the following questions (can be in one message):
 2. **Project location** — full path to the folder where the project should be created
 3. **System description** — one paragraph: what does it do, what problem does it solve?
 4. **Requirements source** — do you already have system requirements in an Excel/xlsx file, or should we develop them together in the interview? (determines Phase 1 Path A vs. Path B below)
-5. **Key engineering concerns** — what properties of components matter for design decisions? (e.g. mass, power consumption, cost, reliability, latency, data rate — these become stereotype properties)
+5. **Key engineering concerns and review views** — two linked sub-questions, ask together:
+   - (a) What *properties* of components matter for design decisions? (e.g. mass, power, cost, reliability, latency, data rate, supplier, safety level — these become stereotype properties applied to every physical component.)
+   - (b) What *filtered views* of the architecture would help during review? (e.g. "components costing more than 10% of the cost budget", "all safety-critical components", "components supplied by vendor X", "components consuming > 20 kW", "any component with a zeroed estimate — a forgotten-input flag".) Each view is either a stereotype-property query (`Cost > 150000`, `SafetyLevel == 'DAL-A'`, `Supplier == 'VendorX'`) or an allocation-driven hand-picked list ("all components realizing ControlUnit").
+   - **(a) and (b) are linked.** A view filters on a property, so every property the user wants to view by must appear on the stereotype. If they want a by-supplier view, add a `Supplier` property. If they want a safety-critical view, add `SafetyLevel`. Ask (b) before finalising (a); the answers together determine the stereotype scope.
 6. **Analysis needs** — is any quantitative roll-up or trade study analysis needed? If so, what kind?
 7. **Test framework** — will Simulink Test be used for verification? (determines whether Phase 9 runs)
 8. **Decision context** — anything about the decision context here that isn't obvious from the SRs? Past incidents that shape risk tolerance, organizational constraints, dependent programs, stakeholder or political considerations. This answer seeds `decisions.md` with meaningful backstory so later design choices have the "why" captured alongside the "what".
@@ -399,10 +402,10 @@ Show: component count, connection count, any unconnected port warnings. Ask user
 
 ### Propose
 
-Based on the engineering concerns identified in Phase 0, propose one or more stereotypes:
+Based on the engineering concerns *and the view wishlist* identified in Phase 0 Q5, propose one or more stereotypes:
 
 - **Stereotype name** — name it after what you are characterizing, not the analysis activity. e.g. `FlightProperties`, `HardwareProperties`, `ComponentCharacteristics`. Avoid names like `BudgetProperties` — a stereotype often carries mass, power, reliability, and latency together, so a budget-specific name is too narrow.
-- **Properties** — for each: name, type (double/string/enum), unit, what it represents
+- **Properties** — for each: name, type (double/string/enum), unit, what it represents. **Cross-check against the view wishlist.** Every property a view needs to filter on must be on the stereotype; every property on the stereotype should serve at least one view or the rollup analysis. An orphan property is a sign the stereotype is over-scoped or the view list is incomplete.
 - **Which components** each stereotype applies to (usually all, but not always)
 - **Initial estimates** — propose plausible starting values per component; user should correct these
 
@@ -421,6 +424,61 @@ Re-run `buildPhysical.m` (idempotent — it rebuilds from scratch).
 ### Checkpoint
 
 Show: stereotype name(s), property names and estimates per component. Ask user to confirm values are reasonable starting points.
+
+---
+
+## Phase 4c: Architecture Views
+
+Views are filtered lenses on the physical model — named dashboards you can flip to in the SC canvas dropdown. Because they live *inside* the `.slx` (as `archViews.xml`), a physical-model rebuild wipes them, so this step runs **after** `buildPhysical.m` and is idempotent itself.
+
+### Propose
+
+Based on the view wishlist from Phase 0 Q5(b), propose a concrete set of view specs. For each:
+
+- **Name** — PascalCase, descriptive (`CostDrivers`, `HighPowerConsumers`, `SafetyCritical`, `VendorXComponents`, `ZeroCost_Flag`).
+- **Query** — either a stereotype-property comparison (`Cost_credits > 150000`, `SafetyLevel == 'DAL-A'`) or a note that it's an explicit-element list (allocation-driven).
+- **Color** — hex (`#D62728` red, `#FF7F0E` orange, `#2CA02C` green, etc.). Named colors like `red`/`blue` work but only a subset — `magenta` errors out. Prefer hex.
+- **What it surfaces** — one-line purpose, e.g. "first targets for trimming when SR-XXX fails".
+
+Suggested starter pack (adjust to the project):
+
+| View | Query | Purpose |
+|---|---|---|
+| `CostDrivers` | `Cost > 10% of budget` | Trim targets when SR-cost fails |
+| `HighPowerConsumers` | `Power > 10% of cap` | Margin-miss contributors |
+| `HeavyStructure` | `Mass > threshold` | Chassis / bulk hardware review |
+| `ZeroCost_Flag` (or any budget property) | `prop == 0` | Catches forgotten estimates before PostOrder rollup silently treats them as 0 |
+| `<ProductionPipeline>` | `Throughput > 0` | Bottleneck-analysis members |
+
+Present as a table. Wait for approval.
+
+### Generate
+
+Generate `scripts/buildViews.m` using the `buildMyViews` helper from the `system-composer` skill (see [`system-composer/code/buildMyViews.m`](../system-composer/code/buildMyViews.m)). The script:
+- Takes a cell-array of specs `{name, prop, op, value, color}`
+- Calls `createView(model, name, Select=q, Color=color)` for each
+- Is idempotent — `deleteView` before `createView` on every run
+- Must run *after* `buildPhysical.m`; add it to `buildAll.m` between the Physical step and the F→L allocation step
+
+Re-run and open the Views Gallery: `openViews(systemcomposer.openModel('<Model>'))`.
+
+### Checkpoint
+
+Show: view name, query, color, and match count per view. The `ZeroCost_Flag` view should ideally report 0 matches; if it reports a positive count, those components have un-filled estimates.
+
+### For allocation-driven or hand-picked views
+
+Single-property queries don't cover every useful view (e.g. "all Physical components realizing ControlUnit logicals"). For those, `buildViews.m` can also use the explicit-element pattern:
+
+```matlab
+v = createView(model, 'ControlRealization', Color='#1F77B4');
+% walk the L->P allocation set and addElement for each Physical target
+for ...
+    v.Root.addElement(arch.lookup('Path', physPath));
+end
+```
+
+Use query-driven views where a single property suffices; reach for explicit elements only when the grouping criterion is relational (allocation, supplier partition, certification path).
 
 ---
 

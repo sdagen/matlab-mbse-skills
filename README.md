@@ -28,7 +28,7 @@ Tell Claude what you want to build:
 
 > *"I want to set up a new MBSE project for a [your system]"*
 
-The `mbse-new-project` skill interviews you, then walks through each phase one at a time — proposing content, waiting for approval, generating the build script, running it, and only moving on once you confirm. The result is a runnable MATLAB project with idempotent scripts and a single `buildAll()` entry point that rebuilds everything from scratch.
+The `mbse-new-project` skill interviews you, then walks through each phase one at a time — proposing content, waiting for approval, generating the build script, running it, and only moving on once you confirm. The interview covers engineering concerns *and* the review views you'll want on the architecture: the two answers jointly shape the component stereotype (you can only filter views on properties you put on the stereotype). The result is a runnable MATLAB project with idempotent scripts and a single `buildAll()` entry point that rebuilds everything from scratch.
 
 ---
 
@@ -50,7 +50,7 @@ MATLAB R2023a or later recommended.
 |---|---|
 | `mbse-new-project` | Orchestrator — interview, propose, generate, run, confirm |
 | `mbse` | Workflow index — which skill covers which phase |
-| `mbse-architecture` | F/L/P models, interface dictionaries, stereotypes, allocation sets, roll-up analysis |
+| `mbse-architecture` | F/L/P models, interface dictionaries, stereotypes, allocation sets, roll-up analysis, review-dashboard views |
 | `simulink-requirements` | slreq API — creation, links, traceability, coverage |
 | `simulink-test` | Tier 2 Simulink Test `.mldatx` files linked to TC requirements |
 | `system-composer` | System Composer API reference — ports, connections, profiles, gotchas |

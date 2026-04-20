@@ -92,14 +92,15 @@ Each phase is a separate idempotent build script. Requirements-to-architecture I
 - Artifacts: `Logical.slx`, `LogicalInterfaces.sldd`
 - Scripts: `buildLogical.m`, `buildLogicalAllocation.m`
 
-### Phase 4 — Physical Architecture + Profile
+### Phase 4 — Physical Architecture + Profile + Views
 
 - Build a System Composer model with concrete hardware/software components and typed ports
 - Create a **physical interface dictionary** with implementation-level interfaces — concrete field names, specific types, physical units
-- Define a **profile** with a component properties stereotype capturing the engineering attributes that drive design decisions (mass, power, cost, reliability, latency, throughput, …) and apply it with initial estimates. Profile creation sits at the end of the architecture script so estimates travel with the model and survive every rebuild.
+- Define a **profile** with a component properties stereotype capturing the engineering attributes that drive design decisions (mass, power, cost, reliability, latency, throughput, supplier, safety level, …) and apply it with initial estimates. Profile creation sits at the end of the architecture script so estimates travel with the model and survive every rebuild.
+- Define **architecture views** — named stereotype-query lenses on the physical model (cost drivers, high-power consumers, zeroed-estimate flags, supplier-partition views). Views live *inside* the `.slx` (in `archViews.xml`), so `buildViews.m` runs **after** `buildPhysical.m` as a decoration step and is itself idempotent. Views and stereotype properties are co-designed: every property a view filters on must be on the stereotype.
 - Create **Physical → SR Implement links** for hardware-specific requirements and system-level budget caps that roll up across components
-- Artifacts: `Physical.slx`, `PhysicalInterfaces.sldd`, `Profile.xml`
-- Scripts: `buildPhysical.m`, `buildPhysicalAllocation.m`
+- Artifacts: `Physical.slx`, `PhysicalInterfaces.sldd`, `Profile.xml` (views are inside the `.slx`)
+- Scripts: `buildPhysical.m`, `buildPhysicalAllocation.m`, `buildViews.m`
 
 ### Phase 5 — Functional→Logical Allocation
 
@@ -127,6 +128,28 @@ Each phase is a separate idempotent build script. Requirements-to-architecture I
 - Script: `buildTestCases.m`
 
 > **Requirements allocation is not a separate phase.** Function / Logical / Physical → SR Implement links are generated alongside each architecture layer (Phases 2, 3, 4) by paired per-phase allocation scripts that share a `removeImplementLinksToModel` helper. Each script cleans up only its own model-scoped links, so they can be re-run in any order without wiping each other out.
+
+---
+
+## Review Dashboards via Architecture Views
+
+On a physical model with dozens of components, scrolling the full diagram to answer "which components are driving the cost budget?" gets tedious fast. Architecture views are **named stereotype-property queries** that filter the model to just the matching components, highlighted in a color of your choice. They appear as a dropdown at the top of the SC canvas and open in bulk from the Views Gallery (`openViews(model)`).
+
+Typical set:
+
+| View | Query | What it surfaces |
+|---|---|---|
+| `CostDrivers` | `Cost > 10% of budget` | First trim targets when a cost SR fails |
+| `HighPowerConsumers` | `Power > 10% of cap` | Margin-miss contributors |
+| `ZeroedEstimate_Flag` | `Mass == 0` (or any budget property) | Components where someone forgot to set a value — otherwise silent in PostOrder rollup |
+| `SafetyCritical` | `SafetyLevel == 'DAL-A'` | Certification-path components |
+| `VendorX` | `Supplier == 'VendorX'` | Per-supplier partitions for procurement/ICD reviews |
+
+Because every view is a query over stereotype properties, **the set of views the project wants directly shapes the stereotype**: a safety-critical view requires a `SafetyLevel` property on the stereotype, a supplier view requires `Supplier`, and so on. Phase 0's Q5 interviews both concerns and desired views together for exactly this reason — the two answers have to be consistent.
+
+Views live inside the `.slx` (in an internal `archViews.xml` entry), so a physical-model rebuild wipes them. The paired `buildViews.m` script re-decorates the freshly-rebuilt model on every `buildAll` run.
+
+For groupings that don't fit a single-property query — "all physical components realizing the ControlUnit logical", "all components from supplier X whose mass changed since last build" — views also support explicit element lists (`v.Root.addElement(comp)`).
 
 ---
 

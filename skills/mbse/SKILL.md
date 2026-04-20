@@ -54,7 +54,8 @@ Phase 10  Verification                TC requirements + Simulink Test file
 | — | `mbse-new-project` | Guided end-to-end setup for a new project, folder structure, project creation |
 | 1–2 | `simulink-requirements` | Requirements creation, Derive links, shall-statement rules |
 | 3–5 | `mbse-architecture` | Functional, logical, and physical models; three-level interface dictionaries; stereotypes |
-| — | `system-composer` | Deep System Composer API reference (ports, connections, profiles) |
+| — | `system-composer` | Deep System Composer API reference (ports, connections, profiles, **architecture views**) |
+| 5b | `mbse-architecture` / `system-composer` | **Architecture views** — stereotype-query review dashboards on the physical model (cost drivers, high-power, zeroed-estimate flags). Query properties must exist on the stereotype — plan together with Phase 4b |
 | 6–7 | `mbse-architecture` | F→L and L→P allocation sets |
 | 8 | `mbse-architecture` | Requirements → component Implement links (L or P level) |
 | 9 | `mbse-architecture` | Quantitative analysis, roll-up, margins |
