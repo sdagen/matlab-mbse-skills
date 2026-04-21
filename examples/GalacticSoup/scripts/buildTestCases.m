@@ -1,5 +1,5 @@
 function buildTestCases()
-% BUILDTESTCASES Create Tier 1 test-case requirements linked to System Requirements.
+% BUILDTESTCASES Create test-case requirements linked to System Requirements.
 %   One TC per SR with a testable stimulus/measurement/pass-criterion, linked via
 %   'Verify'. Budget-cap SRs (SR-GS-011..014) are intentionally skipped — those
 %   are verified by runAnalysis.m and will show NOT COVERED in the coverage report.

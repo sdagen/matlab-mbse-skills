@@ -24,7 +24,6 @@ skills/
   mbse/               Thin index mapping workflow phases to other skills
   mbse-architecture/  F/L/P models, interface dictionaries, stereotype profiles, allocation sets, architecture views, roll-up analysis
   simulink-requirements/  slreq API — req sets, Derive/Implement/Verify links, traceability
-  simulink-test/      Tier 2 verification — authoring Simulink Test .mldatx files linked to TC requirements
   system-composer/    Deep System Composer API reference
 examples/GalacticSoup/  Intergalactic soup kitchen reference project (open GalacticSoup.prj)
 ```
@@ -40,7 +39,7 @@ StakeholderNeed ─Derive─▶ SystemRequirement
                             ◀─Implement── Function          (Functional.slx)
                             ◀─Implement── LogicalComponent  (Logical.slx)
                             ◀─Implement── PhysicalComponent (Physical.slx)
-                            └─Verify─▶ TC Requirement ─Verify─▶ Simulink Test Case
+                            └─Verify─▶ TC Requirement       (TestCases.slreqx)
 
 Function ─F→L Allocate─▶ LogicalElement ─L→P Allocate─▶ PhysicalComponent
 ```

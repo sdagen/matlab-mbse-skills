@@ -14,8 +14,8 @@ F — Functional     What the system does — functions + abstract flows
 L — Logical        What kind of element solves each function — design-agnostic principles
 P — Physical       How it is built — concrete components, interfaces, stereotypes
                    ──────────────────────────────────────────────────
-V — Verification   Tier 1: TC requirements (.slreqx, always)
-                   Tier 2: Simulink Test (.mldatx, only with a simulation model)
+V — Verification   TC requirements (.slreqx) — testable shall-statements
+                   linked to System Requirements via Verify links
 ```
 
 Each layer implements or is allocated to the layer above; traceability links run back up. The **Logical** layer is the key addition over classic RFLP — design-agnostic solution principles (e.g., `SensingUnit`, `ControlUnit`) that sit between what the system *does* and how it is *built*, so the physical decomposition can change without invalidating the logical one.
@@ -50,15 +50,14 @@ The `mbse-new-project` skill activates automatically and begins the interview. T
 
 ## Skills
 
-Six skills live in `skills/`. `mbse-new-project` drives the conversation; the others provide the technical API patterns it draws on.
+Five skills live in `skills/`. `mbse-new-project` drives the conversation; the others provide the technical API patterns it draws on.
 
 | Skill | Purpose |
 |---|---|
 | `mbse-new-project` | Guided end-to-end setup — interview, propose, generate, run, confirm |
 | `mbse` | Workflow index — which skill covers which phase |
 | `mbse-architecture` | F/L/P models, three-level interface dictionaries, stereotype profiles, F→L and L→P allocation sets, roll-up analysis |
-| `simulink-requirements` | slreq API — creation, links, traceability, coverage, link health |
-| `simulink-test` | Tier 2 Simulink Test `.mldatx` files linked to TC requirements |
+| `simulink-requirements` | slreq API — creation, links, traceability, coverage, link health (incl. TC requirements) |
 | `system-composer` | System Composer API reference — ports, connections, profiles, gotchas |
 
 ---
@@ -154,11 +153,9 @@ For groupings that don't fit a single-property query — "all physical component
 
 ---
 
-## Two-Tier Verification
+## Verification
 
-**Tier 1 — TC requirements (always):** `TestCases.slreqx` contains testable shall-statements with Verify links to SRs. Standalone artifact; provides full traceability regardless of whether a simulation model exists.
-
-**Tier 2 — Simulink Test (only with a simulation model):** A `.mldatx` test file links test cases to a Simulink model under test. Meaningful only when an actual simulation model exists — without one, test cases cannot run and provide no additional value over the Tier 1 TCs.
+`TestCases.slreqx` contains testable shall-statements with Verify links to SRs — one TC per SR, each describing stimulus, measurement, and pass criterion in prose. Standalone artifact that provides full requirements traceability on its own. Budget-cap SRs are verified by the analysis script and are expected to show as "NOT COVERED" in the coverage report.
 
 ---
 
@@ -174,7 +171,6 @@ Requirements links:
                         ◀─[Implement]──  Logical Component  (Logical.slx)      non-functional reqs
                         ◀─[Implement]──  Physical Component (Physical.slx)     hardware reqs
                         └─[Verify]─▶  TC Requirement     (TestCases.slreqx)
-                                          └─[Verify]─▶  Simulink Test Case  (Tier 2, if model exists)
 
 Architecture chain (allocation):
   Function  (Functional.slx)
@@ -201,5 +197,5 @@ Each project uses a MATLAB project file (`.prj`) created once by `setupProject.m
 
 - **Idempotent scripts** — every script deletes and recreates its artifacts on each run; safe to re-run without accumulating stale data
 - **Project-integrated** — build scripts keep the MATLAB project in sync; health checks run automatically on every full build
-- **Skills are organized by API domain** — each skill covers one MATLAB toolbox or API surface (`slreq`, System Composer, Simulink Test). When an operation spans domains, it lives in the skill that owns the primary API, with a pointer from the other
+- **Skills are organized by API domain** — each skill covers one MATLAB toolbox or API surface (`slreq`, System Composer). When an operation spans domains, it lives in the skill that owns the primary API, with a pointer from the other
 - **`mbse-new-project` orchestrates; domain skills are reference** — the workflow skill handles phase sequencing and user interaction; it draws on the domain skills for API patterns rather than duplicating them. The two concerns can evolve independently

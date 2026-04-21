@@ -16,7 +16,6 @@ Running log of approved decisions during guided MBSE project setup.
   - `ControlSystem` — orchestration + operator HMI for the 5 beings
 - **Stereotype properties:** `mass` (kg), `volume` (m³), `power` (kW), `cost` (credits), `throughput` (bowls/hour), `automationLevel` (0–1)
 - **Analysis needs:** mass/power/cost roll-ups, throughput vs demand, staffing check (`sum((1 - automationLevel) * operatorHours)` ≤ 5 beings)
-- **Simulink simulation model:** none → Phase 10 (Tier 2) skipped
 
 ## Phase 1 — Requirements (approved, built)
 
@@ -98,5 +97,4 @@ Added one more level of decomposition inside `CookSoup` (functional) and mirrore
 ## Phase 9 — buildAll + final summary (built, all green)
 
 - `scripts/buildAll.m` rebuilds everything in 57 s; all 8 project health checks PASS
-- Phase 10 (Simulink Test Tier 2) skipped per Phase 0 — no simulation model
 - Project shortcuts added: `buildAll.m`, `GalacticSoupPhysical.slx`, `SystemRequirements.slreqx`

@@ -107,7 +107,6 @@ Verified against sim_mission project (MATLAB R2025a, Requirements Toolbox).
 |---|---|---|---|
 | `linktype_rmi_slreq` | `.slreqx` | Integer SID as string | `"8"` |
 | `linktype_rmi_simulink` | `.slx` model | `:SID` path | `":4:27"` |
-| `linktype_rmi_testmgr` | `.mldatx` test | UUID | `"4ea02da5-..."` |
 | `linktype_rmi_word` | `.docx` Word doc | `@Simulink_requirement_item_N` | `"@Simulink_requirement_item_3"` |
 
 ---

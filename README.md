@@ -14,8 +14,8 @@ F — Functional     What the system does — functions + abstract flows
 L — Logical        What kind of element solves each function — design-agnostic principles
 P — Physical       How it is built — concrete components, interfaces, stereotypes
                    ──────────────────────────────────────────────────
-V — Verification   Tier 1: TC requirements (.slreqx, always)
-                   Tier 2: Simulink Test (.mldatx, only with a simulation model)
+V — Verification   TC requirements (.slreqx) — testable shall-statements
+                   linked to System Requirements via Verify links
 ```
 
 Each layer implements or is allocated to the layer above; traceability links run back up. The **Logical** layer is the key addition over classic RFLP — design-agnostic solution principles (e.g., `SensingUnit`, `ControlUnit`) that sit between what the system *does* and how it is *built*.
@@ -38,7 +38,6 @@ The `mbse-new-project` skill interviews you, then walks through each phase one a
 |---|---|
 | System Composer | Architecture modeling, profiles, stereotypes, analysis instances |
 | Requirements Toolbox | Requirement sets; Derive / Implement / Verify links |
-| Simulink Test (optional) | Tier 2 executable verification — only when a simulation model exists |
 
 MATLAB R2023a or later recommended.
 
@@ -51,8 +50,7 @@ MATLAB R2023a or later recommended.
 | `mbse-new-project` | Orchestrator — interview, propose, generate, run, confirm |
 | `mbse` | Workflow index — which skill covers which phase |
 | `mbse-architecture` | F/L/P models, interface dictionaries, stereotypes, allocation sets, roll-up analysis, review-dashboard views |
-| `simulink-requirements` | slreq API — creation, links, traceability, coverage |
-| `simulink-test` | Tier 2 Simulink Test `.mldatx` files linked to TC requirements |
+| `simulink-requirements` | slreq API — creation, links, traceability, coverage (incl. TC requirements) |
 | `system-composer` | System Composer API reference — ports, connections, profiles, gotchas |
 
 `mbse-new-project` drives the conversation; the others provide the API patterns it draws on.
@@ -68,7 +66,6 @@ matlab-mbse-skills/
     ├── mbse/                  Workflow index
     ├── mbse-architecture/     Architecture, allocation, analysis
     ├── simulink-requirements/ slreq API — requirements and traceability
-    ├── simulink-test/         Tier 2 verification
     └── system-composer/       System Composer API reference
 ```
 
@@ -84,7 +81,6 @@ Requirements links:
                         ◀─[Implement]──  Logical Component  (Logical.slx)      non-functional reqs
                         ◀─[Implement]──  Physical Component (Physical.slx)     hardware reqs
                         └─[Verify]─▶  TC Requirement     (TestCases.slreqx)
-                                          └─[Verify]─▶  Simulink Test Case  (if behavioral model exists)
 
 Architecture chain (allocation):
   Function  (Functional.slx)

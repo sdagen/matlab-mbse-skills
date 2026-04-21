@@ -17,9 +17,8 @@ This skill covers everything in the `slreq` API: creating and reading requiremen
 managing traceability links, checking verification coverage, allocating requirements
 to architecture components, and auditing link health.
 
-For **Simulink Test** file creation (`.mldatx`, `sltest.testmanager`) see the
-`simulink-test` skill. For architecture phases (System Composer models, functional
-decomposition, functional→physical allocation) see the `mbse-architecture` skill.
+For architecture phases (System Composer models, functional decomposition,
+functional→physical allocation) see the `mbse-architecture` skill.
 
 See `references/api-quickref.md` in this skill folder for a compact one-page API reference.
 
@@ -38,7 +37,6 @@ slreq writes a `.slmx` file **only when its companion artifact is the source of 
 
 - `MyReqs~slreqx.slmx` appears only if some link's source is a requirement in `MyReqs.slreqx` (e.g., `slreq.createLink(srcReq, destReq)` where `srcReq` lives in `MyReqs`)
 - `MyModel~mdl.slmx` appears only if some link's source is a model element in `MyModel.slx` (typical: `slreq.createLink(component, req)` with Type `Implement` — the component is the source)
-- `MyTests~mldatx.slmx` appears only if some link's source is a test case in `MyTests.mldatx` (typical: Verify links from TCs to SRs)
 
 An artifact that is only ever a link *destination* never gets a paired `.slmx`. In a typical MBSE project:
 
@@ -277,10 +275,12 @@ system requirements. Each TC is an `slreq.Requirement` linked to its SR with a
 `Verify` link.
 
 ```
-SR-SYS-001  ←[Verify]─  TC-SYS-001  ←[Verify]─  Simulink Test Case
+SR-SYS-001  ←[Verify]─  TC-SYS-001
 ```
 
-For the Simulink Test file (`.mldatx`) tier, see the `simulink-test` skill.
+Each TC captures a test in prose — setup, stimulus, pass criterion — and
+traces back to exactly one SR. This is the only verification layer in the
+workflow; there is no separate executable-test artifact.
 
 ---
 
@@ -455,7 +455,6 @@ The `.domain` field identifies what kind of artifact the link points to:
 |---|---|---|
 | `linktype_rmi_slreq` | `.slreqx` requirement file | integer SID string, e.g. `"8"` |
 | `linktype_rmi_simulink` | `.slx` Simulink model block | SID path, e.g. `":4:27"` |
-| `linktype_rmi_testmgr` | `.mldatx` Simulink Test file | UUID string |
 | `linktype_rmi_word` | `.docx` Word document | `@Simulink_requirement_item_N` |
 
 ---
@@ -562,10 +561,9 @@ on the requirement object: `req.inLinks()` and `req.outLinks()`.
 **`slreq.open()` in scripts** — use `slreq.load()` for scripted analysis. `slreq.open()`
 launches the Requirements Editor UI.
 
-**`isResolved()` is almost always false for model and test links** — this is normal.
-Simulink block SIDs and Test Manager UUIDs can't be resolved without opening the model
-or test file. Always use `getSourceLabel()`, `getDestinationLabel()`, and
-`getReferenceInfo()` instead.
+**`isResolved()` is almost always false for model links** — this is normal.
+Simulink block SIDs can't be resolved without opening the model. Always use
+`getSourceLabel()`, `getDestinationLabel()`, and `getReferenceInfo()` instead.
 
 **`outLinks()`/`inLinks()` arrays cannot be vertcat'd** — iterate with index,
 or collect into a cell array first.

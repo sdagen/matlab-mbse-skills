@@ -42,7 +42,7 @@ Phase 8   Requirements Allocation     Function→SR (mandatory), Logical→SR, P
             |  (quantifies)
 Phase 9   Analysis                    optional — roll-up, trade study, sensitivity
             |  (verifies)
-Phase 10  Verification                TC requirements + Simulink Test file
+Phase 10  Verification                TC requirements (.slreqx) with Verify links to SRs
 ```
 
 ---
@@ -59,6 +59,5 @@ Phase 10  Verification                TC requirements + Simulink Test file
 | 6–7 | `mbse-architecture` | F→L and L→P allocation sets |
 | 8 | `mbse-architecture` | Requirements → component Implement links (L or P level) |
 | 9 | `mbse-architecture` | Quantitative analysis, roll-up, margins |
-| 10 (TC reqs) | `simulink-requirements` | TC requirement sets, Verify links, coverage report |
-| 10 (Simulink Test) | `simulink-test` | `.mldatx` test files, test suites, system under test |
+| 10 | `simulink-requirements` | TC requirement sets, Verify links, coverage report |
 | Analysis | `simulink-requirements` | Traceability analysis, link health, coverage matrices |

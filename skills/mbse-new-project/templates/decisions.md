@@ -28,7 +28,7 @@ Skip entries for:
 
 ## {{Date}} — Phase 0 — Initial project scoping
 
-**Context:** Phase 0 interview established system identity, folder layout, requirements source, engineering concerns, analysis scope, and test-framework readiness.
+**Context:** Phase 0 interview established system identity, folder layout, requirements source, engineering concerns, and analysis scope.
 
 **Chosen:**
 - System name: {{SystemName}}
@@ -36,8 +36,7 @@ Skip entries for:
 - Requirements source: {{RequirementsSource}}
 - Engineering concerns (stereotype scope): {{EngineeringConcerns}}
 - Analysis scope: {{AnalysisScope}}
-- Simulink Test: {{SimulinkTestStatus}}
 
-**Rationale / decision context (Q8):** {{DecisionContextFromQ8}}
+**Rationale / decision context (Q7):** {{DecisionContextFromQ7}}
 
-**Revisit if:** Requirements source changes, engineering-concern scope expands, or a Simulink simulation model becomes available (unblocks Phase 10).
+**Revisit if:** Requirements source changes or engineering-concern scope expands.

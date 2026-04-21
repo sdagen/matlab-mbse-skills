@@ -30,7 +30,6 @@ my-system/
 ├── requirements/          .slreqx files (StakeholderNeeds, SystemRequirements, TestCases)
 ├── architecture/          .slx, .sldd, .xml, .mldatx (model, dictionary, profile, allocation)
 ├── analysis/              .mat (analysis instances)
-├── verification/          .mldatx (Simulink Test file, if Phase 9 runs)
 ├── scripts/               buildAll.m and all phase build scripts
 └── derived/               build outputs — NOT tracked in the project
     ├── cache/
@@ -122,8 +121,7 @@ Ask the following questions (can be in one message):
    - (b) What *filtered views* of the architecture would help during review? (e.g. "components costing more than 10% of the cost budget", "all safety-critical components", "components supplied by vendor X", "components consuming > 20 kW", "any component with a zeroed estimate — a forgotten-input flag".) Each view is either a stereotype-property query (`Cost > 150000`, `SafetyLevel == 'DAL-A'`, `Supplier == 'VendorX'`) or an allocation-driven hand-picked list ("all components realizing ControlUnit").
    - **(a) and (b) are linked.** A view filters on a property, so every property the user wants to view by must appear on the stereotype. If they want a by-supplier view, add a `Supplier` property. If they want a safety-critical view, add `SafetyLevel`. Ask (b) before finalising (a); the answers together determine the stereotype scope.
 6. **Analysis needs** — is any quantitative roll-up or trade study analysis needed? If so, what kind?
-7. **Test framework** — will Simulink Test be used for verification? (determines whether Phase 9 runs)
-8. **Decision context** — anything about the decision context here that isn't obvious from the SRs? Past incidents that shape risk tolerance, organizational constraints, dependent programs, stakeholder or political considerations. This answer seeds `decisions.md` with meaningful backstory so later design choices have the "why" captured alongside the "what".
+7. **Decision context** — anything about the decision context here that isn't obvious from the SRs? Past incidents that shape risk tolerance, organizational constraints, dependent programs, stakeholder or political considerations. This answer seeds `decisions.md` with meaningful backstory so later design choices have the "why" captured alongside the "what".
 
 **Do not ask the user for physical subsystems up front.** The physical
 architecture is *derived* from the functional architecture, the logical
@@ -167,10 +165,9 @@ fill their placeholders from the interview answers:
 
 - `plan.md` — substitute `{{SystemName}}`, `{{OnePargraphDescription}}`,
   `{{RequirementsSource}}`, `{{ProjectFolder}}`, `{{EngineeringConcernsList}}`
-  (Q5), `{{AnalysisScopeList}}` (Q6), `{{SimulinkTestStatus}}` (Q7),
-  `{{DecisionContext}}` (Q8). Leave Open questions / Known risks as starter
-  bullets ("(none identified yet)") or carry any concerns raised during the
-  interview.
+  (Q5), `{{AnalysisScopeList}}` (Q6), `{{DecisionContext}}` (Q7). Leave Open
+  questions / Known risks as starter bullets ("(none identified yet)") or carry
+  any concerns raised during the interview.
 - `decisions.md` — substitute `{{Date}}` (absolute date, e.g. `2026-04-18`),
   `{{SystemName}}`, and the same Phase 0 answers in the seeded first entry.
 
@@ -679,39 +676,17 @@ Show: TC count, verification coverage report (SR IDs vs TC IDs). Flag any SRs wi
 
 ---
 
-## Phase 10: Simulink Tests and Final Summary
+## Phase 10: Build All and Final Summary
 
-### Two tiers of verification — be explicit about the distinction
-
-**Tier 1 — TC requirements (Phase 9, always done):** `TestCases.slreqx` contains
-testable shall-statements with Verify links to SRs. These are valid artifacts on
-their own and provide full requirements traceability regardless of whether a
-simulation model exists.
-
-**Tier 2 — Simulink Test file (Phase 10, only if a simulation model exists):**
-`buildSimulinkTests.m` creates an `.mldatx` file that links test cases to a
-Simulink model under test. **This only makes sense when the user has an actual
-Simulink model to simulate.** Without a model, the test cases are empty stubs —
-they have names and descriptions but cannot run and provide no additional value
-over the TC requirements already in Phase 9.
-
-Before generating `buildSimulinkTests.m`, confirm with the user:
-> "Do you have a Simulink simulation model to test against, or is this project
-> architecture/MBSE only at this stage?"
-
-- **If no simulation model:** skip `buildSimulinkTests.m`, do not include it in
-  `buildAll.m`, and note in the final summary that Simulink Test is deferred
-  until a simulation model exists.
-- **If a simulation model exists:** ask for the model name, then generate
-  `buildSimulinkTests.m` using patterns from the `mbse` skill. Each test case
-  must have `SystemUnderTest` set and meaningful pass/fail assessments — a test
-  case that only copies a description is not useful.
+Verification in this workflow is a single layer: the `TestCases.slreqx` set
+built in Phase 9 contains one prose TC per SR with a `Verify` link to that SR.
+That is the full extent of the verification artifact set — no `.mldatx` test
+file is generated.
 
 ### Generate buildAll.m
 
 Generate `scripts/buildAll.m` that calls all phase scripts in order with timing
-output. Omit `buildSimulinkTests` if Phase 10 was skipped. This is the single
-entry point for a clean rebuild from scratch.
+output. This is the single entry point for a clean rebuild from scratch.
 
 After all steps complete, `buildAll.m` must:
 1. Call `registerWithProject` for all script files (keeps the project in sync)
@@ -729,7 +704,7 @@ scriptFiles = { ...
     fullfile(scriptsDir, 'buildFunctionalToLogical.m'), ...
     fullfile(scriptsDir, 'buildLogicalToPhysical.m'), ...
     fullfile(scriptsDir, 'buildAllocation.m'), ...
-    % ... runAnalysis.m, buildTestCases.m, buildSimulinkTests.m if applicable ...
+    % ... runAnalysis.m, buildTestCases.m if applicable ...
     fullfile(scriptsDir, 'registerWithProject.m'), ...
 };
 registerWithProject(scriptFiles);
@@ -790,8 +765,6 @@ Project: <Name>  (<root folder>)
 │   └── <Name>LogicalToPhysical.mldatx    (L→P allocation — Phase 6)
 ├── analysis/
 │   └── <analysis>.mat                 (analysis instance, if Phase 8 ran)
-├── verification/
-│   └── <Name>Tests.mldatx             (if Phase 10 ran — requires simulation model)
 └── scripts/
     ├── buildAll.m                      (run this to rebuild everything)
     ├── buildRequirements.m
@@ -802,8 +775,7 @@ Project: <Name>  (<root folder>)
     ├── buildLogicalToPhysical.m
     ├── buildAllocation.m
     ├── runAnalysis.m                   (if Phase 8 ran)
-    ├── buildTestCases.m
-    └── buildSimulinkTests.m            (if Phase 10 ran)
+    └── buildTestCases.m
 
 Traceability:
   SN ─[Derive]─▶ SR ◀─[Implement]─ LogicalComponent  (or PhysicalComponent)
@@ -816,7 +788,6 @@ Traceability:
                                         │
                                    Function
   SR ─[Verify]─▶ TC requirement
-                     └─[Verify]─▶ Simulink Test Case  (Phase 10 only)
 ```
 
 Remind the user they can rebuild everything cleanly at any time with `buildAll()`.

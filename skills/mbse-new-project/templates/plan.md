@@ -24,11 +24,7 @@ Quantitative work planned for Phase 8:
 
 {{AnalysisScopeList}}
 
-## Simulink Test framework (Phase 0 Q7)
-
-{{SimulinkTestStatus}}
-
-## Decision context (Phase 0 Q8)
+## Decision context (Phase 0 Q7)
 
 Backstory, constraints, incidents, and stakeholder considerations that aren't visible from the SRs alone but shape how decisions should be made:
 
@@ -48,7 +44,7 @@ Backstory, constraints, incidents, and stakeholder considerations that aren't vi
 | 7 | Consolidated SR Implement links | |
 | 8 | Analysis | |
 | 9 | Test cases | |
-| 10 | Simulink Tests (optional) | |
+| 10 | Build all + final summary | |
 
 Mark each as `pending`, `in-progress`, or `completed — YYYY-MM-DD`.
 
