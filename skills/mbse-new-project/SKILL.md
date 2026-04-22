@@ -17,20 +17,31 @@ At each phase: propose → get approval → generate script → run it → check
 If the user rejects or wants changes, revise and regenerate — scripts are
 idempotent so this is always safe.
 
+**Builds on `matlab-project`** for the generic `.prj` mechanics: project
+creation, file tracking, path management, `removeFile`-before-`delete`,
+build-script idempotency conventions, and `runChecks` health checks. This
+skill generates the MBSE phase content; the project plumbing follows the
+patterns in [`../matlab-project/SKILL.md`](../matlab-project/SKILL.md).
+
 Use the other `mbse-*` skills for technical API patterns at each phase. This
 skill manages the conversation flow and script generation.
 
 ---
 
-## Recommended Folder Structure
+## Project folder layout
+
+The MBSE project layout follows the standard `setupProject` shape from
+`matlab-project`, with these subfolders:
 
 ```
 my-system/
-├── my-system.prj          MATLAB Project file (manages path automatically)
+├── my-system.prj          MATLAB Project file
+├── plan.md / decisions.md (living docs — see below)
 ├── requirements/          .slreqx files (StakeholderNeeds, SystemRequirements, TestCases)
 ├── architecture/          .slx, .sldd, .xml, .mldatx (model, dictionary, profile, allocation)
 ├── analysis/              .mat (analysis instances)
-├── scripts/               buildAll.m and all phase build scripts
+├── verification/          (reserved — TC artifacts currently live in requirements/)
+├── scripts/               buildAll.m, all phase build scripts, setupProject + setupMBSEProject
 └── derived/               build outputs — NOT tracked in the project
     ├── cache/
     └── codegen/
@@ -78,33 +89,19 @@ and specific — avoid vague placeholders.
 
 ## Living documentation: `plan.md` and `decisions.md`
 
-Every MBSE project this skill creates carries two hand-curated markdown files at
-the project root alongside `<Name>.prj`. They are *not* build outputs — they are
-human-readable companions that preserve context a future reader (or future
-Claude session) otherwise couldn't recover from the code.
+This skill **overrides** the generic living-doc framework from `matlab-project`
+with MBSE-flavored templates. The framework, cadence guidance, and
+when-to-append rules live in [`../matlab-project/SKILL.md`](../matlab-project/SKILL.md);
+this skill ships its own templates with RFLPV phase rows and MBSE-specific
+sections (Engineering concerns, Analysis scope, Decision context).
 
-| File | Purpose | Update cadence |
-|---|---|---|
-| `plan.md` | Canonical overview: scope, source artifacts, engineering concerns, analysis scope, phase status table, open questions, known risks. | At end of each phase (update status, fold newly-resolved open questions) and whenever scope or constraints change. |
-| `decisions.md` | Append-only log of non-obvious design decisions — naming, decomposition, scope trims, rollbacks — each with context, options, rationale, revisit trigger. | Append at any checkpoint where the chosen approach wasn't forced by the requirements, and at every rollback. |
-
-Templates live at
+Use the templates at
 [`templates/plan.md`](templates/plan.md) and
-[`templates/decisions.md`](templates/decisions.md).
-Phase 0 copies both into the project root, fills placeholders from the interview
-answers, and registers them with the MATLAB project so they travel with the
-repo. Subsequent phases edit them as described above.
-
-**When to append a decisions entry:** only when a judgment call was made. Mechanical
-steps and SR-forced decisions don't belong. Good examples: "shortened artifact
-prefix from full system name to make filenames manageable"; "decomposed
-`CoordinateOperations` into 4 sub-functions per user preference"; "added
-`PowerEstimate_W` to stereotype mid-project after initial scope explicitly
-excluded it". Bad examples: "created the .prj file"; "imported 27 SRs from xlsx".
-
-**When to skip a decisions entry:** bug fixes, API iteration, rerunning a script
-after an error, or anything that reflects tooling friction rather than design
-judgment.
+[`templates/decisions.md`](templates/decisions.md) — **not** the generic ones
+under `matlab-project/templates/`. Phase 0 copies both into the project root,
+fills placeholders from the interview answers, and registers them with the
+MATLAB project so they travel with the repo. Subsequent phases edit them per
+the cadence in `matlab-project`.
 
 ---
 
@@ -129,39 +126,39 @@ architecture, and the SRs — not specified a priori. If the user volunteers a
 physical decomposition, note it but do not commit to it; the Phase 4 proposal
 must still be driven by what the L→P mapping and hardware-specific SRs require.
 
-After gathering answers, create the MATLAB Project inline (not as a saved script,
-since the scripts/ folder doesn't exist yet):
-
-See [`code/setupMBSEProject.m`](code/setupMBSEProject.m) for the full parameterized function:
+After gathering answers, create the MATLAB Project inline (not as a saved
+script — the `scripts/` folder doesn't exist yet). Use the MBSE wrapper
+[`code/setupMBSEProject.m`](code/setupMBSEProject.m), which pins the RFLPV
+folder set on top of `setupProject` from `matlab-project`:
 
 ```
 setupMBSEProject(projectName, projectFolder)
 ```
 
-**Do not create a startup.m.** Build scripts are idempotent and self-cleaning —
-each one calls `slreq.clear()`, `Profile.closeAll()`, etc. at the top. There is
-no shared state that needs clearing on project open.
+The wrapper expands to:
 
-**Shortcuts** (`addShortcut`) point to individual tracked files and appear in the
-MATLAB Project Shortcuts panel. Add them progressively as key files are created:
-`buildAll.m`, the main `.slx` model, `SystemRequirements.slreqx`. Shortcuts take
-only the file path — no label argument: `addShortcut(proj, filePath)`.
-
-Generate this as `scripts/setupMBSEProject.m`, run it, confirm the project opens correctly, then proceed.
-
-Also create `scripts/registerWithProject.m` as a shared helper used by all build scripts.
-See [`code/registerWithProject.m`](code/registerWithProject.m) for the full function:
-
-```
-registerWithProject(files, folders)
+```matlab
+setupProject(projectName, projectFolder, ...
+    {'requirements','architecture','analysis','verification','scripts'}, ...
+    {fullfile('derived','cache'), fullfile('derived','codegen')});
 ```
 
-Every build script must call `registerWithProject` at the end, passing the files it creates. `buildAll.m` additionally registers all script files. This keeps the MATLAB Project in sync with the file system without manual intervention.
+**Generate three files into `scripts/`** so they are on the project path
+together: `setupMBSEProject.m`, the generic `setupProject.m` (copy from
+[`../matlab-project/code/setupProject.m`](../matlab-project/code/setupProject.m)),
+and `registerWithProject.m` (copy from
+[`../matlab-project/code/registerWithProject.m`](../matlab-project/code/registerWithProject.m)).
+Run `setupMBSEProject(name, folder)`, confirm the project opens correctly, then
+proceed.
+
+For the project mechanics that follow — `addShortcut`, `removeFile` before
+`delete`, build-script idempotency conventions, `runChecks` interpretation —
+see [`../matlab-project/SKILL.md`](../matlab-project/SKILL.md).
 
 ### Seed the living documentation
 
-As part of Phase 0, copy the two markdown templates into the project root and
-fill their placeholders from the interview answers:
+Copy this skill's MBSE templates into the project root and fill placeholders
+from the interview answers:
 
 - `plan.md` — substitute `{{SystemName}}`, `{{OnePargraphDescription}}`,
   `{{RequirementsSource}}`, `{{ProjectFolder}}`, `{{EngineeringConcernsList}}`
@@ -171,24 +168,18 @@ fill their placeholders from the interview answers:
 - `decisions.md` — substitute `{{Date}}` (absolute date, e.g. `2026-04-18`),
   `{{SystemName}}`, and the same Phase 0 answers in the seeded first entry.
 
-Both templates are at
-[`templates/plan.md`](templates/plan.md) and
-[`templates/decisions.md`](templates/decisions.md). Register both with the
-MATLAB project so they ship with the repo:
+Templates: [`templates/plan.md`](templates/plan.md) and
+[`templates/decisions.md`](templates/decisions.md) — these MBSE versions
+override the generic ones in `matlab-project/templates/`. Register both with
+the project (`addFile`) so they ship with the repo.
 
-```matlab
-proj = currentProject();
-addFile(proj, fullfile(proj.RootFolder, 'plan.md'));
-addFile(proj, fullfile(proj.RootFolder, 'decisions.md'));
-```
+**MBSE-specific decisions to log in `decisions.md`** during the workflow:
+- "shortened artifact prefix from full system name to make filenames manageable"
+- "decomposed `CoordinateOperations` into 4 sub-functions per user preference"
+- "added `PowerEstimate_W` to stereotype mid-project after initial scope explicitly excluded it"
 
-**Removing files from the project:** If a file that is tracked in the MATLAB project needs to be deleted (e.g., when renaming an artifact or replacing it with a new one), you must call `removeFile(proj, filePath)` *before* deleting the file from disk. A bare `delete()` removes the file but leaves a broken reference in the project, causing health check failures.
-
-```matlab
-proj = currentProject();
-removeFile(proj, fullfile(archDir, 'OldArtifact.sldd'));  % untrack first
-delete(fullfile(archDir, 'OldArtifact.sldd'));             % then remove from disk
-```
+Skip entries for SR-forced decisions, mechanical steps ("created the .prj file",
+"imported 27 SRs from xlsx"), bug fixes, or API-level iteration.
 
 ---
 
@@ -688,57 +679,9 @@ file is generated.
 Generate `scripts/buildAll.m` that calls all phase scripts in order with timing
 output. This is the single entry point for a clean rebuild from scratch.
 
-After all steps complete, `buildAll.m` must:
-1. Call `registerWithProject` for all script files (keeps the project in sync)
-2. Run `runChecks` to surface any project health problems immediately:
-
-```matlab
-%% Register all scripts with the project
-scriptsDir = fileparts(mfilename('fullpath'));
-scriptFiles = { ...
-    fullfile(scriptsDir, 'buildAll.m'), ...
-    fullfile(scriptsDir, 'buildRequirements.m'), ...
-    fullfile(scriptsDir, 'buildFunctional.m'), ...
-    fullfile(scriptsDir, 'buildLogical.m'), ...
-    fullfile(scriptsDir, 'buildPhysical.m'), ...
-    fullfile(scriptsDir, 'buildFunctionalToLogical.m'), ...
-    fullfile(scriptsDir, 'buildLogicalToPhysical.m'), ...
-    fullfile(scriptsDir, 'buildAllocation.m'), ...
-    % ... runAnalysis.m, buildTestCases.m if applicable ...
-    fullfile(scriptsDir, 'registerWithProject.m'), ...
-};
-registerWithProject(scriptFiles);
-
-%% Project health check
-proj = matlab.project.currentProject();
-if ~isempty(proj.Name)
-    results = runChecks(proj);
-    nFail = 0;
-    fprintf('\nProject checks:\n');
-    for i = 1:numel(results)
-        if results(i).Passed
-            fprintf('  [PASS] %s\n', results(i).Description);
-        else
-            fprintf('  [FAIL] %s\n', results(i).Description);
-            for j = 1:numel(results(i).ProblemFiles)
-                fprintf('           %s\n', results(i).ProblemFiles(j));
-            end
-            nFail = nFail + 1;
-        end
-    end
-    if nFail == 0
-        fprintf('All checks passed.\n');
-    else
-        fprintf('%d check(s) failed — review output above.\n', nFail);
-    end
-end
-```
-
-`runChecks` runs 8 built-in project checks including file existence, path
-consistency (`Project:Checks:ProjectPath`), unsaved files, and SLPRJ folder
-placement. A `Project:Checks:ProjectPath` failure means a folder is on the
-MATLAB path but not registered as a project path folder — fix it with
-`addPath(proj, folderPath)` in the project setup script.
+After all phase scripts complete, `buildAll.m` must:
+1. Call `registerWithProject` for **all** script files in `scripts/` (keeps the project in sync — include `setupProject.m`, `setupMBSEProject.m`, `registerWithProject.m`, `removeImplementLinksToModel.m`, every `build*.m`, `runAnalysis.m` if applicable)
+2. Append the **project health check block** from [`../matlab-project/SKILL.md`](../matlab-project/SKILL.md) (the `runChecks` loop with PASS/FAIL output) verbatim — that block is generic and lives in the `matlab-project` skill so updates only need to land in one place
 
 ### Final summary
 

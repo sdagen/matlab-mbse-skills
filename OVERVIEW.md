@@ -50,11 +50,12 @@ The `mbse-new-project` skill activates automatically and begins the interview. T
 
 ## Skills
 
-Five skills live in `skills/`. `mbse-new-project` drives the conversation; the others provide the technical API patterns it draws on.
+Six skills live in `skills/`. `mbse-new-project` drives the conversation; the others provide the technical API patterns it draws on. `matlab-project` is the generic foundation that `mbse-new-project` builds on for `.prj` mechanics — it is also useful on its own for any MATLAB Project work.
 
 | Skill | Purpose |
 |---|---|
-| `mbse-new-project` | Guided end-to-end setup — interview, propose, generate, run, confirm |
+| `matlab-project` | MATLAB Project foundation — `.prj` setup, file tracking, path management, build-script idempotency, runChecks health checks |
+| `mbse-new-project` | Guided end-to-end MBSE setup — interview, propose, generate, run, confirm. Builds on `matlab-project` |
 | `mbse` | Workflow index — which skill covers which phase |
 | `mbse-architecture` | F/L/P models, three-level interface dictionaries, stereotype profiles, F→L and L→P allocation sets, roll-up analysis |
 | `simulink-requirements` | slreq API — creation, links, traceability, coverage, link health (incl. TC requirements) |
@@ -184,7 +185,9 @@ All links are bidirectional and navigable from either end in the Requirements Ed
 
 ## MATLAB Project Integration
 
-Each project uses a MATLAB project file (`.prj`) created once by `setupProject.m`. The project provides:
+Each project uses a MATLAB project file (`.prj`) created once via the `matlab-project` skill — `setupProject.m` is the generic helper, with `setupMBSEProject.m` as the MBSE-shaped wrapper that pins the standard RFLPV folder set. All `.prj` mechanics — folder layout, file tracking, the `removeFile`-before-`delete` rule, derived/cache wiring, and `runChecks` health checks — live in `matlab-project`. See that skill for the conventions; `mbse-new-project` calls into them.
+
+Capabilities provided:
 
 - **Path management** — project folders are on the MATLAB path, so System Composer resolves models by name and tools find artifacts without absolute paths
 - **Derived folders** — Simulink cache and codegen outputs are kept out of source control

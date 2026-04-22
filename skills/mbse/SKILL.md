@@ -51,7 +51,8 @@ Phase 10  Verification                TC requirements (.slreqx) with Verify link
 
 | Phase | Skill | What it covers |
 |---|---|---|
-| — | `mbse-new-project` | Guided end-to-end setup for a new project, folder structure, project creation |
+| — | `matlab-project` | MATLAB Project setup (.prj), file tracking, path management, build-script idempotency, runChecks health checks. Foundation for `mbse-new-project` |
+| — | `mbse-new-project` | Guided end-to-end setup for a new MBSE project, RFLPV phase orchestration, MBSE folder layout |
 | 1–2 | `simulink-requirements` | Requirements creation, Derive links, shall-statement rules |
 | 3–5 | `mbse-architecture` | Functional, logical, and physical models; three-level interface dictionaries; stereotypes |
 | — | `system-composer` | Deep System Composer API reference (ports, connections, profiles, **architecture views**) |

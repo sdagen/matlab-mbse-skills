@@ -47,13 +47,14 @@ MATLAB R2023a or later recommended.
 
 | Skill | Role |
 |---|---|
-| `mbse-new-project` | Orchestrator — interview, propose, generate, run, confirm |
+| `matlab-project` | MATLAB Project foundation — `.prj` setup, file tracking, path/health rules, build-script conventions |
+| `mbse-new-project` | Orchestrator — interview, propose, generate, run, confirm. Builds on `matlab-project` |
 | `mbse` | Workflow index — which skill covers which phase |
 | `mbse-architecture` | F/L/P models, interface dictionaries, stereotypes, allocation sets, roll-up analysis, review-dashboard views |
 | `simulink-requirements` | slreq API — creation, links, traceability, coverage (incl. TC requirements) |
 | `system-composer` | System Composer API reference — ports, connections, profiles, gotchas |
 
-`mbse-new-project` drives the conversation; the others provide the API patterns it draws on.
+`mbse-new-project` drives the conversation; the others provide the API patterns it draws on. `matlab-project` is reusable for any MATLAB Project work, MBSE or otherwise.
 
 ---
 
@@ -62,6 +63,7 @@ MATLAB R2023a or later recommended.
 ```
 matlab-mbse-skills/
 └── skills/
+    ├── matlab-project/        MATLAB Project foundation (.prj, tracking, health)
     ├── mbse-new-project/      Guided end-to-end setup (start here)
     ├── mbse/                  Workflow index
     ├── mbse-architecture/     Architecture, allocation, analysis
