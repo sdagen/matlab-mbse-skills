@@ -41,7 +41,7 @@ Both skills can edit System Composer `.slx` files. They work at **different API 
 **Defer to `building-simulink-models` with `model_edit` when:**
 - Making a one-off structural change to an already-built SC model (add one SubSystem, rewire one port, tweak a parameter)
 - The user just wants "add a component called X" and the model has no interface dictionary / profile / allocation set the change needs to stay consistent with
-- The MBSE workflow in `mbse-new-project` is not involved
+- The MBSE workflow in `mbse-workflow` is not involved
 
 **Do not mix in one script.** `model_edit` adds components via `add_block` with `type: "SubSystem"`; this skill adds them via `addComponent`. The two produce different object types and the architecture-modeling APIs in this skill (`setInterface`, `applyStereotype`, `addPort`) may not work on SubSystem-block-created components. Pick one layer per script.
 

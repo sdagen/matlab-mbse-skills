@@ -24,7 +24,7 @@ Each layer implements or is allocated to the layer above; traceability links run
 
 ## Guided Project Setup
 
-The primary interaction model is a conversational, phase-by-phase guided workflow driven by the `mbse-new-project` skill. Users don't need to know the MATLAB APIs or script patterns — Claude handles all of that.
+The primary interaction model is a conversational, phase-by-phase guided workflow driven by the `mbse-workflow` skill. Users don't need to know the MATLAB APIs or script patterns — Claude handles all of that.
 
 ```
 Phase 0 — Interview
@@ -44,19 +44,18 @@ Every script is idempotent, so rejecting a checkpoint means revise and re-run �
 **Starting a session:**
 > *"I want to set up a new MBSE project for an eVTOL propulsion system"*
 
-The `mbse-new-project` skill activates automatically and begins the interview. The end state is a complete MATLAB project with a `.prj` file, idempotent build scripts for each phase, all generated artifacts, and a single `buildAll()` entry point.
+The `mbse-workflow` skill activates automatically and begins the interview. The end state is a complete MATLAB project with a `.prj` file, idempotent build scripts for each phase, all generated artifacts, and a single `buildAll()` entry point.
 
 ---
 
 ## Skills
 
-Six skills live in `skills/`. `mbse-new-project` drives the conversation; the others provide the technical API patterns it draws on. `matlab-project` is the generic foundation that `mbse-new-project` builds on for `.prj` mechanics — it is also useful on its own for any MATLAB Project work.
+Five skills live in `skills/`. `mbse-workflow` drives the conversation; the others provide the technical API patterns it draws on. `matlab-project` is the generic foundation that `mbse-workflow` builds on for `.prj` mechanics — it is also useful on its own for any MATLAB Project work.
 
 | Skill | Purpose |
 |---|---|
 | `matlab-project` | MATLAB Project foundation — `.prj` setup, file tracking, path management, build-script idempotency, runChecks health checks |
-| `mbse-new-project` | Guided end-to-end MBSE setup — interview, propose, generate, run, confirm. Builds on `matlab-project` |
-| `mbse` | Workflow index — which skill covers which phase |
+| `mbse-workflow` | Guided MBSE setup and phase orchestration — interview, propose, generate, run, confirm. Builds on `matlab-project`. Useful for new projects and resuming existing ones mid-workflow |
 | `mbse-architecture` | F/L/P models, three-level interface dictionaries, stereotype profiles, F→L and L→P allocation sets, roll-up analysis |
 | `simulink-requirements` | slreq API — creation, links, traceability, coverage, link health (incl. TC requirements) |
 | `system-composer` | System Composer API reference — ports, connections, profiles, gotchas |
@@ -185,7 +184,7 @@ All links are bidirectional and navigable from either end in the Requirements Ed
 
 ## MATLAB Project Integration
 
-Each project uses a MATLAB project file (`.prj`) created once via the `matlab-project` skill — `setupProject.m` is the generic helper, with `setupMBSEProject.m` as the MBSE-shaped wrapper that pins the standard RFLPV folder set. All `.prj` mechanics — folder layout, file tracking, the `removeFile`-before-`delete` rule, derived/cache wiring, and `runChecks` health checks — live in `matlab-project`. See that skill for the conventions; `mbse-new-project` calls into them.
+Each project uses a MATLAB project file (`.prj`) created once via the `matlab-project` skill — `setupProject.m` is the generic helper, with `setupMBSEProject.m` as the MBSE-shaped wrapper that pins the standard RFLPV folder set. All `.prj` mechanics — folder layout, file tracking, the `removeFile`-before-`delete` rule, derived/cache wiring, and `runChecks` health checks — live in `matlab-project`. See that skill for the conventions; `mbse-workflow` calls into them.
 
 Capabilities provided:
 
@@ -201,4 +200,4 @@ Capabilities provided:
 - **Idempotent scripts** — every script deletes and recreates its artifacts on each run; safe to re-run without accumulating stale data
 - **Project-integrated** — build scripts keep the MATLAB project in sync; health checks run automatically on every full build
 - **Skills are organized by API domain** — each skill covers one MATLAB toolbox or API surface (`slreq`, System Composer). When an operation spans domains, it lives in the skill that owns the primary API, with a pointer from the other
-- **`mbse-new-project` orchestrates; domain skills are reference** — the workflow skill handles phase sequencing and user interaction; it draws on the domain skills for API patterns rather than duplicating them. The two concerns can evolve independently
+- **`mbse-workflow` orchestrates; domain skills are reference** — the workflow skill handles phase sequencing and user interaction; it draws on the domain skills for API patterns rather than duplicating them. The two concerns can evolve independently

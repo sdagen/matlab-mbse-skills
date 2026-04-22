@@ -7,7 +7,7 @@ description: >
   build scripts that keep the project in sync with the file system. Trigger
   phrases include "set up a MATLAB project", "create a .prj", "track this file
   in the project", "project health check", "build script conventions". This
-  skill is the generic foundation; domain-specific skills (e.g. `mbse-new-project`)
+  skill is the generic foundation; domain-specific skills (e.g. `mbse-workflow`)
   build on it.
 ---
 
@@ -196,7 +196,7 @@ addFile(proj, fullfile(proj.RootFolder, 'plan.md'));
 addFile(proj, fullfile(proj.RootFolder, 'decisions.md'));
 ```
 
-**Override for domain skills.** Any domain skill (e.g. `mbse-new-project`) may
+**Override for domain skills.** Any domain skill (e.g. `mbse-workflow`) may
 ship its own `plan.md` / `decisions.md` templates under its own `templates/`
 folder and use those *instead* of the generic ones here. Overrides should
 keep the core section order (Overview → Source artifacts → Status → Open

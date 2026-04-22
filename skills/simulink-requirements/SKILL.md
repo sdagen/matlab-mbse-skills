@@ -651,4 +651,4 @@ end
 rs.save();
 ```
 
-This is the pattern in Phase 9 of `mbse-new-project/SKILL.md`.
+This is the pattern in Phase 9 of `mbse-workflow/SKILL.md`.
