@@ -39,7 +39,7 @@ The `mbse-workflow` skill interviews you, then walks through each phase one at a
 | System Composer | Architecture modeling, profiles, stereotypes, analysis instances |
 | Requirements Toolbox | Requirement sets; Derive / Implement / Verify links |
 
-MATLAB R2023a or later recommended.
+MATLAB R2023a or later for the core RFLP workflow. Variant components require R2024b+; programmatic sequence diagrams require R2024b+ (mature on R2025b).
 
 ---
 
@@ -51,9 +51,20 @@ MATLAB R2023a or later recommended.
 | `mbse-workflow` | Orchestrator — interview, propose, generate, run, confirm. Builds on `matlab-project` |
 | `mbse-architecture` | F/L/P models, interface dictionaries, stereotypes, allocation sets, roll-up analysis, review-dashboard views |
 | `simulink-requirements` | slreq API — creation, links, traceability, coverage (incl. TC requirements) |
-| `system-composer` | System Composer API reference — ports, connections, profiles, gotchas |
+| `system-composer` | System Composer API reference — ports, connections, profiles, variant components, sequence diagrams, gotchas |
 
 `mbse-workflow` drives the conversation; the others provide the API patterns it draws on. `matlab-project` is reusable for any MATLAB Project work, MBSE or otherwise.
+
+---
+
+## Beyond the core RFLP workflow
+
+Two capabilities extend the base workflow when a project needs them:
+
+- **Variant components + trade studies** — turn a physical composite into a System Composer Variant Component, add candidate architectures as choices (parallel vessels, larger single unit, pipelined stages), and compare them side-by-side on mass / power / cost / throughput / MTBF with a generic `tradeStudy` driver. Emits a markdown comparison table, pass/fail matrix, and Pareto-efficient set. See [`skills/system-composer/SKILL.md#variant-components`](skills/system-composer/SKILL.md#variant-components) and [`skills/system-composer/code/tradeStudy.m`](skills/system-composer/code/tradeStudy.m). Topology-dependent rollup (MIN vs. SUM for throughput, series vs. parallel for reliability) is covered in [`skills/mbse-architecture/references/analysis.md#topology-dependent-rollup`](skills/mbse-architecture/references/analysis.md).
+- **Sequence diagrams** — attach a programmatic System Composer `Interaction` to the logical model for a specific operational scenario. Each message is bound to a real port pair, so structural changes surface as build errors rather than silent drift. See [`skills/system-composer/SKILL.md#sequence-diagrams`](skills/system-composer/SKILL.md#sequence-diagrams). slreq has a known limitation around persisting Verify links from an Interaction — documented in [`skills/simulink-requirements/SKILL.md`](skills/simulink-requirements/SKILL.md) Common Pitfalls.
+
+Both features are optional; the core RFLP workflow runs end-to-end without either.
 
 ---
 
