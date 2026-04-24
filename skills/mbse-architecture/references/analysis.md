@@ -169,6 +169,56 @@ requirements follow that pattern, the script stays in sync.
 | Design alternatives | Two `instantiate` calls with different property sets; compare `.mat` outputs |
 | Pareto / scatter | Read arrays of per-component values in one pass, `plot(mass, power)` |
 | Monte Carlo | Perturb leaf estimates with `randn` across iterations; histogram the rolled-up top-level value |
+| **Variant trade study** | Enumerate variant choices on a `VariantComponent`; `setActiveChoice` + `instantiate` + rollup per variant; compare. Template at [`system-composer/code/tradeStudy.m`](../../system-composer/code/tradeStudy.m). |
+
+---
+
+## Topology-dependent rollup
+
+Some rollups can't use one aggregator uniformly. **Throughput** is the canonical case:
+
+- A serial pipeline's sustained rate is the **MIN** over its stages (the bottleneck).
+- Parallel branches working on the same stream combine via **SUM**.
+
+The composite where the rollup runs can't know which rule applies without a hint. The clean pattern is a **per-composite stereotype flag** the rollup callback reads:
+
+```matlab
+% On the stereotype definition:
+addProperty(st, "UseParallelThroughput", Type="double", DefaultValue="0");
+
+% In the rollup callback (analysis/myRollup.m):
+p    = [prefix, 'Throughput'];
+pPar = [prefix, 'UseParallelThroughput'];
+if instance.hasValue(p)
+    useParallel = false;
+    if instance.hasValue(pPar)
+        useParallel = instance.getValue(pPar) >= 1;
+    end
+    if useParallel
+        total = 0; anyPos = false;
+        for child = instance.Components
+            if child.hasValue(p)
+                v = child.getValue(p);
+                if v > 0, total = total + v; anyPos = true; end
+            end
+        end
+        if anyPos, instance.setValue(p, total); end
+    else
+        bottleneck = inf;
+        for child = instance.Components
+            if child.hasValue(p)
+                v = child.getValue(p);
+                if v > 0 && v < bottleneck, bottleneck = v; end
+            end
+        end
+        if isfinite(bottleneck), instance.setValue(p, bottleneck); end
+    end
+end
+```
+
+**Why numeric and not a string-enum like `"MIN"` / `"SUM"`.** For variant-component trade studies the flag value has to flip per active choice. System Composer R2025b propagates numeric stereotype properties from the active choice to the wrapper's instance at `instantiate` time, but does NOT propagate string properties — the wrapper instance will report `hasValue == false` for a string property set on the choice. Encoding the flag as 0/1 (numeric) makes it survive the choice→wrapper-instance hop. See the [`system-composer` skill's Variant Components section](../../system-composer/SKILL.md#variant-components) for details.
+
+Reliability has the same topology dependency (series vs. parallel). Add a sibling flag (`UseParallelReliability`) with matching branch logic when needed. Don't try to infer topology from port connectivity in the callback — an explicit flag keeps the design intent legible.
 
 ---
 

@@ -200,6 +200,134 @@ The helper called with a Component does `addPort(comp.Architecture, ...)` intern
 
 ---
 
+## Variant Components
+
+A **variant component** is a sibling concept to a composite: one wrapper with N alternative internal architectures (*choices*), only one of which is active at a time. Use this for architecture-options studies where you want to compare candidate topologies without duplicating the whole model file.
+
+See [`code/buildMyVariantComposite.m`](code/buildMyVariantComposite.m) for a working build template and [`code/tradeStudy.m`](code/tradeStudy.m) for the driver that enumerates variants and emits a markdown comparison report.
+
+### Canonical build sequence
+
+```matlab
+% 1. Build a regular composite with its boundary ports + the baseline content
+comp = addComponent(arch, 'CookingLine');
+addPort(comp.Architecture, 'RecipeData', 'in');
+% ... add sub-components for the baseline ...
+
+% 2. Convert to a variant wrapper. The baseline content becomes the first
+%    auto-created choice (named the same as the wrapper).
+vc = comp.makeVariant();
+
+% 3. Re-fetch the wrapper -- the old `comp` reference is STALE (see below).
+cookingLine = arch.getComponent('CookingLine');
+
+% 4. Rename the auto-choice AND sync its variant condition to match.
+ch = vc.getChoices();
+ch(1).Name = 'V0_Baseline';
+vc.setCondition(ch(1), 'V0_Baseline');
+
+% 5. Add additional choices; each choice is a regular Component with its own
+%    Architecture. Wire internal content inside each choice.
+v1 = vc.addChoice({'V1_Parallel'});
+addPort(v1.Architecture, 'RecipeData', 'in');
+addComponent(v1.Architecture, 'ParallelA');
+addComponent(v1.Architecture, 'ParallelB');
+
+% 6. Choose the default active variant.
+vc.setActiveChoice('V0_Baseline');
+```
+
+### Gotcha — the original `Component` reference is stale after `makeVariant`
+
+Once `makeVariant` returns, port lookups on the original variable fail with `"not in same architecture scope"`. External connections placed *before* `makeVariant` survive the conversion (verified empirically), but any subsequent `comp.getPort(...)` or `connect(...)` calls must use a fresh reference:
+
+```matlab
+vc = comp.makeVariant();
+freshComp = arch.getComponent('CookingLine');   % returns VariantComponent
+
+% Wrong -- stale scope:
+connect(other.getPort('Out'), comp.getPort('RecipeData'));   % ✗
+
+% Right:
+connect(other.getPort('Out'), freshComp.getPort('RecipeData'));   % ✓
+```
+
+### Gotcha — rename + `setCondition` must stay in sync
+
+`ch.Name = 'V0_Baseline'` does *not* update the variant condition. `setActiveChoice` matches the given string against conditions, so without re-syncing:
+
+```matlab
+ch(1).Name = 'V0_Baseline';
+vc.setActiveChoice('V0_Baseline');
+%   Error: Setting active choice for variant block '...' with variant control
+%          'V0_Baseline' is not supported.
+```
+
+Fix by calling `vc.setCondition(ch(1), 'V0_Baseline')` immediately after the rename.
+
+### Gotcha — `applyStereotype` on the wrapper throws
+
+```
+Unable to apply stereotype 'Profile.Stereotype' on variant architecture '.../Wrapper'.
+```
+
+Apply the stereotype to each *choice* instead. Numeric property values set on the active choice propagate to the wrapper's instance at `instantiate` time, so the rollup callback sees the right value when it visits the wrapper. This is the mechanism that makes per-variant rollup estimates work.
+
+### Gotcha — **string** stereotype properties do NOT propagate choice → wrapper instance
+
+Verified empirically on R2025b. A `Type="double"` property set on the active choice shows up on the wrapper's instance (`instance.hasValue(...) == true`, `getValue(...)` returns the choice's number). A `Type="string"` property shows up as `hasValue == false` on the wrapper's instance.
+
+This matters when you want the rollup callback to branch on variant-specific behavior (e.g. MIN aggregation for serial, SUM for parallel). **Encode the flag as a number, not a string:**
+
+```matlab
+% Works across the choice → wrapper instance boundary:
+addProperty(st, "UseParallelThroughput", Type="double", DefaultValue="0");
+setProperty(parallelChoice, stPath + ".UseParallelThroughput", "1");
+
+% Does NOT work:
+addProperty(st, "ThroughputAggregation", Type="string", DefaultValue='"MIN"');
+setProperty(parallelChoice, stPath + ".ThroughputAggregation", '"SUM"');
+%   -> wrapper's instance reports hasValue == false for this property
+```
+
+See [`mbse-architecture/references/analysis.md#topology-dependent-rollup`](../mbse-architecture/references/analysis.md#topology-dependent-rollup) for the rollup callback pattern that reads the numeric flag.
+
+### Gotcha — auto-layout skips inactive choices
+
+`comp.Architecture.Components` on a `VariantComponent` returns only the *active* choice's sub-components, so a generic recursive `arrangeComposites` walker that follows `.Architecture` never lays out the inactive variants. Iterate `vc.getChoices()` explicitly:
+
+```matlab
+function arrangeComposites(arch, pathPrefix)
+    for comp = arch.Components
+        subPath = [pathPrefix, '/', comp.Name];
+        if isa(comp, 'systemcomposer.arch.VariantComponent')
+            Simulink.BlockDiagram.arrangeSystem(subPath);
+            for ch = comp.getChoices()
+                choicePath = [subPath, '/', ch.Name];
+                Simulink.BlockDiagram.arrangeSystem(choicePath);
+                arrangeComposites(ch.Architecture, choicePath);
+            end
+        elseif ~isempty(comp.Architecture) && ~isempty(comp.Architecture.Components)
+            Simulink.BlockDiagram.arrangeSystem(subPath);
+            arrangeComposites(comp.Architecture, subPath);
+        end
+    end
+end
+```
+
+Each choice's Simulink path is `Model/Wrapper/ChoiceName` — regular `arrangeSystem` works on them.
+
+### Minor — `updatePortsFromChoices` requires the `'Mode'` kwarg
+
+```matlab
+vc.updatePortsFromChoices();                    % error: 'Mode' must be specified
+vc.updatePortsFromChoices('Mode','addPorts');   % ✓ adds missing wrapper ports from choices
+```
+
+Use this when choices define their own boundary ports and you want the wrapper to pick them up. If instead you add ports on the wrapper's `Architecture` *before* `makeVariant` and mirror them on each choice manually, you don't need this call.
+
+---
+
 ## Why dict.save() + Re-fetch Is Required
 
 `systemcomposer.createDictionary()` creates the file but interface objects in memory aren't
