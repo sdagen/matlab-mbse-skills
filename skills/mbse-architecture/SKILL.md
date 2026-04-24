@@ -50,6 +50,8 @@ All three dictionaries are independent — no model script depends on another be
 
 **Build order: Functional first, Logical second, Physical third.**
 
+These three models are *structural* views. For a *behavioral* companion (message sequences across components for a specific scenario), attach a System Composer Interaction to the Logical model — see [`system-composer/SKILL.md#sequence-diagrams`](../system-composer/SKILL.md#sequence-diagrams). The Logical layer is the natural home because it's stable across Physical-layer variant trade studies.
+
 The Logical layer is the key distinction from classic RFLP. Logical components are
 design-agnostic solution principles (e.g., `SensingUnit`, `ControlUnit`, `ActuationUnit`)
 — they commit to *what kind* of element is needed without specifying vendor, geometry,

@@ -624,6 +624,40 @@ Show the analysis report output. Flag any margins that are negative (over budget
 
 ---
 
+## Optional: behavioral views (sequence diagrams)
+
+When the structural architecture is stable, a sequence diagram adds the
+"how the pieces collaborate over time" story. Typical trigger: a
+stakeholder review where reviewers ask "walk me through what happens
+during a normal X" — production cycle, fault handling, startup, etc.
+
+Best authored on the **logical** model. The logical layer is stable
+across variant trade studies (variants typically only change the
+physical layer), so a sequence diagram written there survives
+architecture-options work.
+
+Use [System Composer Interactions](../system-composer/SKILL.md#sequence-diagrams)
+programmatically — every message is bound to a real port pair on the
+underlying components, so a port rename surfaces as a build error
+instead of silent drift.
+
+The build step typically runs LAST in `buildAll` because it attaches
+an interaction to a model that's already been built by its own build
+script — the architecture rebuild wipes interactions, so the sequence
+diagram must be re-created after.
+
+**Requirement traceability caveat on R2025b:** a `Verify` link from a
+sequence-diagram Interaction to an SR cannot coexist with
+`linktype_rmi_simulink` Implement links on the same `.slx` — see the
+[`simulink-requirements` Common Pitfalls section](../simulink-requirements/SKILL.md#common-pitfalls)
+for details. For now, trace from the diagram to SRs by convention (a
+named interaction + a companion TC that references it by name).
+
+Skip this phase entirely if a behavioral view adds no review value;
+nothing else in the workflow depends on it.
+
+---
+
 ## Phase 9: Test Cases
 
 ### Propose

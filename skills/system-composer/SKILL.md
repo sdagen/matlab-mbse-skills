@@ -328,6 +328,113 @@ Use this when choices define their own boundary ports and you want the wrapper t
 
 ---
 
+## Sequence Diagrams
+
+A **sequence diagram** (SC calls these "Interactions") is a behavioral view layered on top of an architecture model. It shows how components collaborate over time for a specific scenario: which messages pass between them, in what order, under what guards. Unlike a Mermaid/PlantUML sequence diagram, every SC message is **bound to real ports on real components** — rename a port upstream and the sequence-diagram build errors, which is the feature not a bug.
+
+See [`code/buildMySequenceDiagram.m`](code/buildMySequenceDiagram.m) for a working template.
+
+### Mental model
+
+```
+Model
+ └── Interaction                      (one per scenario)
+      ├── Lifelines                   (one per participant, bound to a Component)
+      └── RootFragment
+           └── Operands(1)            (pre-created default operand; messages live here)
+                ├── addMessage(...)
+                └── addFragment('Alt' | 'Loop' | 'Opt' | 'Par')
+                     └── Operands(1..N) → more messages, recursively
+```
+
+Messages hang off *operands*, not directly off fragments or the interaction. `Interaction.RootFragment.Operands(1)` is where the straight-line message sequence goes. `Alt` creates a fragment with two operands; each has its own `Guard` string and its own `addMessage`.
+
+### Canonical build sequence
+
+```matlab
+model = systemcomposer.openModel('MyModel');
+destroyInteractionIfPresent(model, 'MyScenario');   % idempotent rebuild
+diagram = model.addInteraction('MyScenario');
+
+L1 = diagram.addLifeline('MyModel/CompA');          % path OR Component object
+L2 = diagram.addLifeline('MyModel/CompB');
+
+op = diagram.RootFragment.Operands(1);
+op.addMessage(L1, 'OutPort', L2, 'InPort', 'request');
+op.addMessage(L2, 'ReplyOut', L1, 'ReplyIn', 'reply');
+
+save_system('MyModel');                              % interactions live INSIDE the .slx
+open(diagram);                                       % show in Sequence Viewer
+```
+
+### Gotcha — `addMessage` is 5 arguments, not 3
+
+```matlab
+op.addMessage(L1, L2, 'request')                     % ✗ "Function requires 3 more input(s)"
+op.addMessage('request', L1, L2, 1)                  % ✗ various complaints
+op.addMessage(L1, 'OutPort', L2, 'InPort', 'request')% ✓ (src, srcPort, dst, dstPort, guard)
+```
+
+The 2nd and 4th args are **port names that must exist on the components underlying the lifelines**. If you pass a name that doesn't match a port on the source component, you get `"Name must match a port on the component corresponding to the lifeline"`. This ties every message to the structural model and is the main reason to prefer programmatic SC sequence diagrams over free-form Mermaid.
+
+### Gotcha — messages do NOT live on Fragments directly
+
+```matlab
+diagram.RootFragment.addMessage(...)                 % ✗ no such method
+diagram.RootFragment.Operands(1).addMessage(...)     % ✓
+```
+
+Same for `Alt`/`Loop`/`Opt` fragments: get `.Operands(i).addMessage(...)`. `Alt.Operands` has length 2 after `addFragment('Alt')`; set `op1.Guard = "cond1"` / `op2.Guard = "cond2"`.
+
+### Gotcha — idempotent rebuild requires explicit `destroy()`
+
+`model.addInteraction(name)` errors on duplicate name. Always delete the existing one first:
+
+```matlab
+function destroyInteractionIfPresent(model, name)
+    try, ixns = model.getInteractions(); catch, ixns = []; end
+    for i = 1:numel(ixns)
+        if strcmp(ixns(i).Name, name), ixns(i).destroy(); return; end
+    end
+end
+```
+
+Put the build step AFTER the architecture-model build step in `buildAll` — a rebuild of the architecture model wipes interactions along with everything else, so the sequence diagram must be re-created each time.
+
+### Guard syntax
+
+Guards accept trigger names, boolean expressions in braces, or both:
+
+```
+'cookComplete'                           event name
+'{Accepted==1}'                          boolean on interface fields
+'rocketDocked{RocketPresent==1}'         event + condition
+'rising(sw-1){sw==1}'                    signal transition + condition
+```
+
+Use interface-element names (from the dictionary — e.g., `Accepted` on `QCVerdict`) so the guard text stays consistent with the rest of the model.
+
+### Duration constraints
+
+`message.Start` and `message.End` return `MessageEvent` objects that can be passed to `addDurationConstraint`:
+
+```matlab
+t0 = msg1.End;
+t1 = msg2.End;
+diagram.addDurationConstraint(t0, t1, 't < 10sec');   % assertion on the render + runtime check
+```
+
+### Persistence + viewing
+
+- Interactions are serialized *inside* the model's `.slx` — `save_system(modelName)` commits them; no separate file to track.
+- `open(diagram)` opens the SC Sequence Viewer canvas. `diagram.open()` also works.
+
+### Requirement traceability — see the slreq skill
+
+slreq does not accept an `Interaction` object as a `createLink` source on R2025b, and the struct-based workaround (`domain='linktype_sc_interaction'`) fails to persist when the containing `.slx` already hosts `linktype_rmi_simulink` Implement links. See [`simulink-requirements/SKILL.md`](../simulink-requirements/SKILL.md) — search for "Interaction"; it covers the recommended convention-based trace pattern.
+
+---
+
 ## Why dict.save() + Re-fetch Is Required
 
 `systemcomposer.createDictionary()` creates the file but interface objects in memory aren't

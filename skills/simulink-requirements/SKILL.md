@@ -581,6 +581,38 @@ before calling `r.getImplementationStatus()`, otherwise it throws.
 sets. Stale `.slmx` files store cross-artifact links and will auto-open old model
 files on load, causing conflicts.
 
+**Linking a System Composer `Interaction` (sequence diagram) to a requirement
+doesn't persist on R2025b.** Two dead ends:
+
+- `slreq.createLink(interactionObj, req)` — with a raw
+  `systemcomposer.interaction.Interaction` — throws a bare `"Link creation
+  failed"` error.
+- The struct workaround `struct('domain','linktype_sc_interaction',
+  'artifact',modelName,'id',char(diagram.UUID))` *does* create a link in
+  memory (and `req.inLinks()` shows it), but on next `slreq.load` the
+  `slreq.data.ReqData/loadLinkSet` listener errors with
+  `"Artifact type mismatch: Expected linktype_rmi_simulink, Found
+  linktype_sc_interaction"` whenever the same `.slx` artifact already
+  stores `linktype_rmi_simulink` Implement links from component→req
+  wiring. slreq refuses to coexist two different artifact-type LinkSets
+  on one `.slx`; the interaction-sourced link is silently dropped on
+  reload.
+
+Workarounds:
+
+- **Convention-based trace.** Give the interaction a clear name and refer
+  to it by name from requirements' `Description` or `Rationale`, or from
+  a TC. Rely on humans to walk the trace.
+- **Companion TC.** Create a dedicated `TC-XXX-YYY` whose description is
+  "Execute the `<interactionName>` sequence on the <model> model and
+  verify message ordering and guard expressions." `Verify` link that TC
+  to the target SR; slreq supports TC→SR Verify links normally.
+
+Revisit in a future MATLAB release — mixed-domain LinkSets on one `.slx`
+may eventually be permitted, at which point the UUID-struct approach can
+be re-enabled. See the `system-composer` skill's **Sequence Diagrams**
+section for the programmatic API.
+
 **Don't stuff parent-reference text into `Rationale`.** Writing `"Derived from
 SN-SYS-001."` into `req.Rationale` shadows the real purpose of the field AND
 collides with the `DerivedFrom` column on xlsx export. Keep `Rationale` for the
