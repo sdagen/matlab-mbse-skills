@@ -96,6 +96,8 @@ These will silently fail or throw cryptic errors without warning:
 | Wire a composite boundary port to a sub-component port | `connect(boundaryArchPort, subComp.getPort("Name"))` — boundary is the saved `ArchitecturePort` ref; sub-component is its `ComponentPort` via `getPort` | Connecting two `ArchitecturePort`s across the boundary, or using the boundary's `ComponentPort` — both throw "incompatible directions" |
 | Assign interface to port | `port.setInterface(iface)` | `port.Interface = iface` — read-only property error |
 | Add interface element | `addElement(iface, "Name", Type="double")` | `Type="MyValueTypeName"` — value type names resolve to `Simulink.ValueType` objects which the bus compiler cannot use; always use a Simulink base type directly |
+| Add interface to dictionary | `systemcomposer.openDictionary(file)` + `addInterface` + `addElement` | `Simulink.data.dictionary.open(file)` + `Simulink.Bus` + `addEntry` — appears to succeed, but the Bus entry is invisible to SC (`dict.getInterface` returns empty). See "SC Interfaces vs Simulink.Bus" below |
+| Add port to a component | `addPort(comp.Architecture, name, dir)` with lowercase `'in'`/`'out'` | `comp.addPort(...)` — does not exist; throws "Unrecognized method" |
 | Create model | `systemcomposer.createModel(name)` | `systemcomposer.createModel(name, true)` — invalid 2nd arg |
 | Set string stereotype property | `setProperty(comp, path, '"value"')` | `setProperty(comp, path, 'value')` — evaluates as MATLAB variable |
 | Set string default in addProperty | `DefaultValue='"standard"'` | `DefaultValue="standard"` — evaluates, throws error |
@@ -457,6 +459,63 @@ thermalIface = dict.getInterface("ThermalFluid");
 
 ---
 
+## SC Interfaces vs Simulink.Bus: Same File, Different Namespace
+
+A System Composer interface dictionary (`.sldd`) physically holds two distinct kinds of
+entries that look identical from the outside but do not interoperate:
+
+| Path | Object type | Visible to SC? |
+|---|---|---|
+| `systemcomposer.openDictionary(...)` + `addInterface` + `addElement` | `systemcomposer.interface.DataInterface` | **Yes** — `dict.getInterface` returns it; can be passed to `port.setInterface` |
+| `Simulink.data.dictionary.open(...)` + `addEntry(section, name, Simulink.Bus)` | `Simulink.Bus` | **No** — appears in `section.find` but `dict.getInterface` returns empty `0×0 DataInterface array` |
+
+The trap: the Simulink data-dictionary path appears to succeed (the entry shows up if you
+list section entries), but System Composer cannot consume it. Symptoms when you try to use
+a Bus entry as a port interface:
+
+- `dict.getInterface('MyBus')` returns `0×0 systemcomposer.interface.DataInterface`
+- `port.setInterface(theBus)` either errors or silently leaves the port untyped
+- The interface won't appear in the SC interface editor
+
+**Always use the SC API for interfaces consumed by SC component ports.** Mixing these is the
+single most common cause of "I added the interface, why doesn't the port resolve it?"
+
+```matlab
+% ✓ correct
+dict = systemcomposer.openDictionary('MyDict.sldd');
+intf = addInterface(dict, 'MyInterface');
+addElement(intf, 'BatchId',  Type='uint32');
+addElement(intf, 'Quantity', Type='double');
+dict.save();
+
+% Re-fetch (handles go stale across save) and assign to a port
+intf = dict.getInterface('MyInterface');
+port.setInterface(intf);
+
+% ✗ wrong — Bus path; invisible to SC even though the file accepts it
+dd  = Simulink.data.dictionary.open('MyDict.sldd');
+sec = getSection(dd, 'Design Data');
+bus = Simulink.Bus;
+bus.Elements = [Simulink.BusElement /* ... */];
+addEntry(sec, 'MyInterface', bus);   % succeeds; SC can't see it
+```
+
+If you accidentally add a Bus entry, remove it via `deleteEntry` on the
+`Simulink.data.dictionary.Section` before re-adding via the SC API:
+
+```matlab
+dd  = Simulink.data.dictionary.open('MyDict.sldd');
+sec = getSection(dd, 'Design Data');
+e   = sec.find('Name','MyInterface');
+if ~isempty(e), deleteEntry(e); saveChanges(dd); end
+```
+
+The Bus and the SC DataInterface can technically coexist in the same `.sldd` under the
+same name (the namespaces don't collide), but the dead Bus entry is just noise — clean
+it up.
+
+---
+
 ## Auto-layout
 
 Always call `Simulink.BlockDiagram.arrangeSystem` before `save(model)` — programmatically
@@ -476,6 +535,32 @@ save(model);
 Arrange sub-levels before the top level so the top-level layout has accurate size information
 for each component block. A sub-architecture that was never arranged remains a collapsed pile,
 and the top-level arrange won't fix it.
+
+### Surgical layout for in-place edits
+
+`arrangeSystem` repositions **every** block in the scope. When adding a single component to an
+existing model and you don't want a wholesale re-layout, do the placement by hand and route only
+the lines incident to the new block:
+
+```matlab
+% Default-sized component lands at [15 15 65 121] (50×106) in the upper-left —
+% set Position explicitly to a peer-sized rect near its wiring partners
+set_param([modelName '/NewComp'], 'Position', [600 1170 800 1276]);   % W=200 H=106
+
+% Route just the lines incident to the new block (other blocks unchanged)
+ph = get_param([modelName '/NewComp'], 'PortHandles');
+allPorts = [ph.Inport(:); ph.Outport(:)];
+for i = 1:numel(allPorts)
+    lh = get_param(allPorts(i), 'Line');
+    if lh ~= -1
+        Simulink.BlockDiagram.routeLine(lh);
+    end
+end
+```
+
+Inspect the Position rects of two or three peer components first to pick a width/height that
+matches the rest of the diagram — SC's default size for a freshly-added component is much
+narrower than the typical model's block width.
 
 ---
 
