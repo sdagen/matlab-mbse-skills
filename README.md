@@ -1,7 +1,12 @@
-# MATLAB MBSE Skills
+# MathWorks MBSE Skills
 
-A collection of Claude skills for Model-Based Systems Engineering in MATLAB — from stakeholder needs through verified test cases, with full bidirectional traceability.
+A collection of skills For AI coding agents for Model-Based Systems Engineering (MBSE) in MATLAB, from stakeholder needs through analysis, with full bidirectional traceability. 
 
+Skills in this repository are designed to work with the [MATLAB MCP Core Server](https://github.com/matlab/matlab-mcp-core-server) or [Simulink Agentic Toolkit](https://github.com/simulink/simulink-agentic-toolkit). Make sure you configure your coding agent to use one of these before using skills from this repository.
+
+The skills and workflow are shown in action in [this article about MBSE and Agentic AI](https://blogs.mathworks.com/simulink/2026/04/26/model-based-systems-engineering-and-agentic-ai/).
+
+**Disclaimer:** *This set of skills is not an official MathWorks product and might not be appropriate for all users and use cases. They are useful for me, and I continue to evolve them as I work through more projects. As the disclaimer on the blog says: These postings are the author's and don't necessarily represent the opinions of MathWorks.*
 ---
 
 ## The RFLP Workflow
@@ -49,8 +54,8 @@ MATLAB R2023a or later for the core RFLP workflow. Variant components require R2
 |---|---|
 | `matlab-project` | MATLAB Project foundation — `.prj` setup, file tracking, path/health rules, build-script conventions |
 | `mbse-workflow` | Orchestrator — interview, propose, generate, run, confirm. Builds on `matlab-project` |
-| `mbse-architecture` | F/L/P models, interface dictionaries, stereotypes, allocation sets, roll-up analysis, review-dashboard views |
-| `simulink-requirements` | slreq API — creation, links, traceability, coverage (incl. TC requirements) |
+| `mbse-architecture` | F/L/P architecture models, interface dictionaries, stereotypes, allocation sets, roll-up analysis, review-dashboard views |
+| `simulink-requirements` | Requirements Toolbox API — creation, links, traceability, coverage |
 | `system-composer` | System Composer API reference — ports, connections, profiles, variant components, sequence diagrams, gotchas |
 
 `mbse-workflow` drives the conversation; the others provide the API patterns it draws on. `matlab-project` is reusable for any MATLAB Project work, MBSE or otherwise.
